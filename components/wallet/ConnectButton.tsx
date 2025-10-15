@@ -1,14 +1,11 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Copy, LogOut, Wallet } from 'lucide-react';
 import { useAccount, useConnect, useDisconnect, useEnsName } from 'wagmi';
-
-function truncateAddress(address?: string) {
-  if (!address) return '';
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-}
+import { truncateAddress } from '@/lib/format';
 
 export function ConnectButton() {
   const { address, status } = useAccount();
@@ -49,16 +46,20 @@ export function ConnectButton() {
 
   if (!isConnected) {
     return (
-      <button
+      <motion.button
         type="button"
         onClick={handleConnect}
         disabled={isPending || !canConnect}
-        className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-lg transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:cursor-not-allowed disabled:opacity-70"
+        className="btn-primary min-w-[11rem] justify-center gap-2 rounded-2xl shadow-surface hover:shadow-surface-hover disabled:cursor-not-allowed"
         aria-label="Connect wallet"
+        whileHover={{ y: -1 }}
+        whileTap={{ scale: 0.97 }}
       >
         <Wallet className="h-4 w-4" aria-hidden="true" />
-        {isPending ? 'Connecting...' : canConnect ? 'Connect Wallet' : 'Install a wallet'}
-      </button>
+        <span className="font-medium">
+          {isPending ? 'Connecting...' : canConnect ? 'Connect Wallet' : 'Install a wallet'}
+        </span>
+      </motion.button>
     );
   }
 
@@ -68,34 +69,36 @@ export function ConnectButton() {
     <>
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>
-          <button
+          <motion.button
             type="button"
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 shadow-sm transition hover:border-slate-300 hover:shadow focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+            className="focus-outline inline-flex items-center gap-3 rounded-2xl border border-border/70 bg-card/85 px-4 py-2 text-sm font-medium text-foreground shadow-sm backdrop-blur-sm transition hover:border-border hover:bg-card/95"
             aria-label="Account menu"
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.97 }}
           >
-            <span className="inline-flex items-center gap-2">
-              <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500" aria-hidden="true" />
+            <span className="inline-flex items-center gap-2 text-sm font-medium">
+              <span className="icon-dot bg-success/80" aria-hidden="true" />
               {label}
             </span>
-          </button>
+          </motion.button>
         </DropdownMenu.Trigger>
         <DropdownMenu.Content
           align="end"
-          sideOffset={8}
-          className="z-50 min-w-[180px] rounded-lg border border-slate-200 bg-white p-1 shadow-lg focus-visible:outline-none"
+          sideOffset={10}
+          className="z-50 min-w-[200px] rounded-2xl border border-border/70 bg-card/95 p-1 shadow-lg backdrop-blur-sm focus-visible:outline-none"
         >
           <DropdownMenu.Item
-            className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-slate-700 outline-none hover:bg-slate-100 focus:bg-slate-100"
+            className="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm text-foreground outline-none transition hover:bg-primary/10 focus:bg-primary/10 focus-visible:ring-0"
             onSelect={(event) => {
               event.preventDefault();
               handleCopy();
             }}
           >
             <Copy className="h-4 w-4" aria-hidden="true" />
-            {copied ? 'Copied!' : 'Copy address'}
+            <span>{copied ? 'Copied!' : 'Copy address'}</span>
           </DropdownMenu.Item>
           <DropdownMenu.Item
-            className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-red-600 outline-none hover:bg-red-50 focus:bg-red-50"
+            className="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm text-foreground outline-none transition hover:bg-primary/10 focus:bg-primary/10 focus-visible:ring-0"
             onSelect={(event) => {
               event.preventDefault();
               void handleDisconnect();
@@ -103,7 +106,7 @@ export function ConnectButton() {
             aria-label="Disconnect wallet"
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
-            Disconnect
+            <span>Disconnect</span>
           </DropdownMenu.Item>
         </DropdownMenu.Content>
       </DropdownMenu.Root>

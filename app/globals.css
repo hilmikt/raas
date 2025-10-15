@@ -4,12 +4,151 @@
 
 :root {
   color-scheme: light;
+  --background: 249 250 251;
+  --foreground: 15 23 42;
+  --card: 255 255 255;
+  --card-foreground: 15 23 42;
+  --muted: 71 85 105;
+  --muted-foreground: 71 85 105;
+  --border: 226 232 240;
+  --ring: 37 99 235;
+  --primary: 37 99 235;
+  --primary-foreground: 248 250 252;
+  --accent: 226 232 240;
+  --accent-foreground: 15 23 42;
+  --info: 56 189 248;
+  --info-foreground: 15 23 42;
+  --success: 16 185 129;
+  --success-foreground: 255 255 255;
+  --hero-gradient: radial-gradient(circle at top, rgba(37, 99, 235, 0.08), transparent 65%);
+  --surface-shadow: 0 20px 40px -24px rgba(15, 23, 42, 0.22);
+  --surface-shadow-hover: 0 30px 60px -24px rgba(37, 99, 235, 0.28);
 }
 
-body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+.dark {
+  color-scheme: dark;
+  --background: 11 15 26;
+  --foreground: 248 250 252;
+  --card: 17 24 39;
+  --card-foreground: 248 250 252;
+  --muted: 148 163 184;
+  --muted-foreground: 148 163 184;
+  --border: 255 255 255 / 0.06;
+  --ring: 56 189 248;
+  --primary: 56 189 248;
+  --primary-foreground: 11 15 26;
+  --accent: 30 41 59;
+  --accent-foreground: 248 250 252;
+  --info: 56 189 248;
+  --info-foreground: 11 15 26;
+  --success: 45 212 191;
+  --success-foreground: 11 15 26;
+  --hero-gradient: radial-gradient(circle at top, rgba(56, 189, 248, 0.22), transparent 70%);
+  --surface-shadow: 0 20px 50px -30px rgba(56, 189, 248, 0.35);
+  --surface-shadow-hover: 0 30px 70px -26px rgba(56, 189, 248, 0.45);
 }
 
-a {
-  @apply transition hover:text-slate-900;
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased transition-colors duration-300 ease-out;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading tracking-tight text-foreground;
+  }
+
+  a {
+    @apply text-foreground/80 transition-colors duration-200 ease-out hover:text-foreground;
+  }
+}
+
+.hero-gradient {
+  position: relative;
+  isolation: isolate;
+}
+
+.hero-gradient::before {
+  content: '';
+  position: absolute;
+  inset: -15% -25%;
+  z-index: -1;
+  background: var(--hero-gradient);
+  filter: blur(0);
+  opacity: 0.85;
+  transition: opacity 300ms ease, transform 600ms ease;
+}
+
+.hero-gradient:is(:hover, :focus-visible)::before {
+  opacity: 1;
+  transform: scale(1.02);
+}
+
+.shadow-surface {
+  box-shadow: var(--surface-shadow);
+}
+
+.shadow-surface-hover {
+  box-shadow: var(--surface-shadow-hover);
+}
+
+.backdrop-blur-surface {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.focus-outline {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+}
+
+.btn-reset {
+  @apply inline-flex items-center justify-center gap-2 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-60 transition-colors duration-200 ease-out;
+}
+
+.btn-primary {
+  @apply btn-reset rounded-2xl bg-primary px-6 py-3 text-base text-primary-foreground shadow-md hover:bg-primary/90 active:scale-[0.99] transition-transform ease-out;
+}
+
+.btn-ghost {
+  @apply btn-reset rounded-2xl border border-transparent bg-transparent px-6 py-3 text-base text-foreground hover:border-border hover:bg-foreground/[0.04] active:scale-[0.98];
+}
+
+.card-surface {
+  @apply rounded-2xl border border-border/60 bg-card text-card-foreground transition-all duration-300 ease-out;
+  box-shadow: var(--surface-shadow);
+}
+
+.card-surface:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: var(--surface-shadow-hover);
+  border-image: linear-gradient(135deg, rgba(var(--primary), 0.3), rgba(var(--foreground), 0.08)) 1;
+  border-image-slice: 1;
+}
+
+.icon-dot {
+  @apply inline-flex h-2.5 w-2.5 rounded-full;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+::selection {
+  background: rgba(var(--primary), 0.26);
+  color: rgb(var(--primary-foreground));
 }

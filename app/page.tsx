@@ -2,16 +2,26 @@
 
 import { useAccount } from 'wagmi';
 import { Web3Provider } from '@/providers/Web3Provider';
+import Link from 'next/link';
 import { LandingHero } from '@/components/landing/LandingHero';
 import { WorkflowStrip } from '@/components/landing/WorkflowStrip';
 import { DashboardShell } from '@/components/app/DashboardShell';
 import { ConnectButton } from '@/components/wallet/ConnectButton';
+import { SiteHeader } from '@/components/layout/SiteHeader';
 
 function LandingState() {
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
-      <main className="flex flex-1 flex-col items-center justify-center gap-12 pb-16 pt-24">
-        <LandingHero action={<ConnectButton />} />
+    <div className="relative flex min-h-screen flex-col bg-background">
+      <SiteHeader showConnect={false} />
+      <main className="flex flex-1 flex-col items-center gap-16 pb-20 pt-12 sm:pt-10">
+        <LandingHero
+          primaryAction={<ConnectButton />}
+          secondaryAction={
+            <Link href="#docs" className="btn-ghost text-sm font-medium">
+              Docs
+            </Link>
+          }
+        />
         <WorkflowStrip />
       </main>
     </div>

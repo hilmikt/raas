@@ -1,5 +1,6 @@
 'use client';
 
+import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 import { useAccount, useChainId } from 'wagmi';
 import { chains } from '@/providers/Web3Provider';
@@ -15,14 +16,24 @@ export function NetworkBanner() {
     return match?.name ?? `network ${chainId}`;
   }, [chainId, isConnected]);
 
-  const message =
-    isConnected
-      ? `You're connected to ${networkName}. This demo runs on any EVM network for now.`
-      : 'No wallet connected yet. Pick any network when you connect - the demo works everywhere for now.';
+  const message = isConnected ? (
+    <>
+      <span className="font-medium text-foreground">{networkName}</span>
+      <span className="mx-2 h-1 w-1 rounded-full bg-border/60 inline-block align-middle" aria-hidden="true" />
+      This demo runs on any EVM network right now.
+    </>
+  ) : (
+    <>No wallet connected yet. Choose any network when you connect - the demo works everywhere for now.</>
+  );
 
   return (
-    <div className="w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-center text-xs text-slate-600">
+    <motion.div
+      className="w-full rounded-2xl border border-border/60 bg-card/90 px-4 py-3 text-center text-sm text-muted-foreground shadow-surface transition-colors"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.22, 0.61, 0.36, 1] }}
+    >
       {message}
-    </div>
+    </motion.div>
   );
 }
