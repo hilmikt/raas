@@ -6,16 +6,16 @@ settings:
 
 overrides:
   hardhat: 3.0.7
-  ethers: 6.14.0
+  ethers: 6.15.0
   '@nomiclabs/hardhat-ethers': npm:@nomicfoundation/hardhat-ethers@4.0.2
-  '@ethersproject/*': npm:ethers@6.14.0
+  '@ethersproject/*': npm:ethers@6.15.0
 
 importers:
 
   .:
     devDependencies:
       '@nomicfoundation/hardhat-ethers':
-        specifier: 4.0.2
+        specifier: ^4
         version: 4.0.2(bufferutil@4.0.9)(hardhat@3.0.7(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
       '@nomicfoundation/hardhat-toolbox':
         specifier: 6.1.0
@@ -30,10 +30,10 @@ importers:
         specifier: 16.4.5
         version: 16.4.5
       ethers:
-        specifier: 6.15.0
+        specifier: ^6
         version: 6.15.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       hardhat:
-        specifier: 3.0.7
+        specifier: ^3
         version: 3.0.7(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       ts-node:
         specifier: ^10.9.2
@@ -392,7 +392,7 @@ packages:
     peerDependencies:
       '@nomicfoundation/hardhat-ethers': ^3.1.0
       chai: ^4.2.0
-      ethers: 6.14.0
+      ethers: 6.15.0
       hardhat: 3.0.7
 
   '@nomicfoundation/hardhat-errors@3.0.2':
@@ -409,7 +409,7 @@ packages:
       '@nomicfoundation/hardhat-ethers': ^3.1.0
       '@nomicfoundation/hardhat-ignition': ^0.15.13
       '@nomicfoundation/ignition-core': ^0.15.13
-      ethers: 6.14.0
+      ethers: 6.15.0
       hardhat: 3.0.7
 
   '@nomicfoundation/hardhat-ignition@3.0.3':
@@ -437,7 +437,7 @@ packages:
       '@types/mocha': '>=9.1.0'
       '@types/node': '>=20.0.0'
       chai: ^4.2.0
-      ethers: 6.14.0
+      ethers: 6.15.0
       hardhat: 3.0.7
       hardhat-gas-reporter: ^2.3.0
       solidity-coverage: ^0.8.1
@@ -549,7 +549,7 @@ packages:
   '@typechain/ethers-v6@0.5.1':
     resolution: {integrity: sha512-F+GklO8jBWlsaVV+9oHaPh5NJdd6rAKN4tklGfInX1Q7h0xPgVLP39Jl3eCulPB5qexI71ZFHwbljx4ZXNfouA==}
     peerDependencies:
-      ethers: 6.14.0
+      ethers: 6.15.0
       typechain: ^8.3.2
       typescript: '>=4.7.0'
 
@@ -557,7 +557,7 @@ packages:
     resolution: {integrity: sha512-mtaUlzLlkqTlfPwB3FORdejqBskSnh+Jl8AIJGjXNAQfRQ4ofHADPl1+oU7Z3pAJzmZbUXII8MhOLQltcHgKnA==}
     peerDependencies:
       '@typechain/ethers-v6': ^0.5.1
-      ethers: 6.14.0
+      ethers: 6.15.0
       hardhat: 3.0.7
       typechain: ^8.3.2
 
@@ -1014,10 +1014,6 @@ packages:
   ethereumjs-util@7.1.5:
     resolution: {integrity: sha512-SDl5kKrQAudFBUe5OJM9Ac6WmMyYmXX/6sTmLZ3ffG2eY6ZIGBes3pEDxNN6V72WyOw4CPD5RomKdsa8DAAwLg==}
     engines: {node: '>=10.0.0'}
-
-  ethers@6.14.0:
-    resolution: {integrity: sha512-KgHwltNSMdbrGWEyKkM0Rt2s+u1nDH/5BVDQakLinzGEJi4bWindBzZSCC4gKsbZjwDTI6ex/8suR9Ihbmz4IQ==}
-    engines: {node: '>=14.0.0'}
 
   ethers@6.15.0:
     resolution: {integrity: sha512-Kf/3ZW54L4UT0pZtsY/rf+EkBU7Qi5nnhonjUb8yTXcxH3cdcWrV2cRyk0Xk/4jK6OoHhxxZHriyhje20If2hQ==}
@@ -2375,7 +2371,7 @@ snapshots:
       '@nomicfoundation/hardhat-utils': 3.0.3
       debug: 4.4.3(supports-color@8.1.1)
       ethereum-cryptography: 2.2.1
-      ethers: 6.14.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      ethers: 6.15.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       hardhat: 3.0.7(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - bufferutil
@@ -2477,7 +2473,7 @@ snapshots:
       '@nomicfoundation/solidity-analyzer': 0.1.2
       cbor2: 1.12.0
       debug: 4.4.3(supports-color@8.1.1)
-      ethers: 6.14.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      ethers: 6.15.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       immer: 10.0.2
       lodash-es: 4.17.21
       ndjson: 2.0.0
@@ -3081,19 +3077,6 @@ snapshots:
       create-hash: 1.2.0
       ethereum-cryptography: 0.1.3
       rlp: 2.2.7
-
-  ethers@6.14.0(bufferutil@4.0.9)(utf-8-validate@5.0.10):
-    dependencies:
-      '@adraffy/ens-normalize': 1.10.1
-      '@noble/curves': 1.2.0
-      '@noble/hashes': 1.3.2
-      '@types/node': 22.7.5
-      aes-js: 4.0.0-beta.5
-      tslib: 2.7.0
-      ws: 8.17.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
 
   ethers@6.15.0(bufferutil@4.0.9)(utf-8-validate@5.0.10):
     dependencies:

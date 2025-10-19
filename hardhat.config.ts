@@ -1,25 +1,26 @@
 import { HardhatUserConfig } from "hardhat/config";
 import hardhatEthers from "@nomicfoundation/hardhat-ethers";
 import * as dotenv from "dotenv";
+
 dotenv.config();
 
-const pk = process.env.PRIVATE_KEY ?? "";
-const accounts = pk ? [`0x${pk.replace(/^0x/, "")}`] : [];
+const PK = (process.env.PRIVATE_KEY || "").replace(/^0x/, "");
+const accounts = PK ? [`0x${PK}`] : [];
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.24",
+  solidity: {
+    version: "0.8.24",
+    settings: { optimizer: { enabled: true, runs: 200 } },
+  },
   networks: {
     sepolia: {
-      type: "http",
+      type: "http",                      // explicit to silence HHE15
       url: process.env.SEPOLIA_RPC || "",
-      accounts
+      chainId: 11155111,
+      accounts,
     },
-    baseSepolia: {
-      type: "http",
-      url: process.env.BASE_SEPOLIA_RPC || "",
-      accounts
-    }
   },
-  plugins: [hardhatEthers]
+  plugins: [hardhatEthers],
 };
+
 export default config;

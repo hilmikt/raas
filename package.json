@@ -5,16 +5,16 @@
   "type": "module",
   "scripts": {
     "compile": "hardhat compile",
-    "deploy:pyusd:sepolia": "hardhat run scripts/deploy-pyusd-rail.js --network sepolia"
+    "deploy:pyusd:sepolia": "hardhat run scripts/deploy-pyusd-rail.ts --network sepolia"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-ethers": "4.0.2",
+    "@nomicfoundation/hardhat-ethers": "^4",
     "@nomicfoundation/hardhat-toolbox": "6.1.0",
     "@openzeppelin/contracts": "^5.4.0",
     "@types/node": "^24.8.1",
     "dotenv": "16.4.5",
-    "ethers": "6.15.0",
-    "hardhat": "3.0.7",
+    "ethers": "^6",
+    "hardhat": "^3",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },

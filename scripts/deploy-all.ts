@@ -1,90 +1,121 @@
-import "dotenv/config";
-import { writeFileSync, readFileSync, existsSync } from "fs";
+import { writeFileSync, existsSync, appendFileSync } from "fs";
 import { network } from "hardhat";
+import * as path from "path";
+import * as dotenv from "dotenv";
 
-async function upsertEnvLocal(updates: Record<string,string>) {
-  const path = ".env.local";
-  let content = existsSync(path) ? readFileSync(path, "utf8") : "";
-  const lines = content.split(/\r?\n/).filter(Boolean);
-  const map = new Map<string,string>();
-  for (const line of lines) {
-    const i = line.indexOf("=");
-    if (i > -1) map.set(line.slice(0,i), line.slice(i+1));
+dotenv.config();
+
+function requireEnv(name: string): string {
+  const v = process.env[name];
+  if (!v || v.trim() === "") {
+    throw new Error(`Missing required env: ${name}`);
   }
-  for (const [k,v] of Object.entries(updates)) map.set(k, v);
-  const out = Array.from(map.entries()).map(([k,v]) => `${k}=${v}`).join("\n") + "\n";
-  writeFileSync(path, out);
+  return v.trim();
 }
 
 async function main() {
+  // 1) Read env
+  const tokenAddress = requireEnv("PYUSD_SEPOLIA"); // can be PYUSD on Sepolia or a mock ERC20
+
   const connection = await network.connect();
   const { ethers, networkName } = connection;
 
   try {
-    const pyusdToken = process.env.PYUSD_SEPOLIA;
-    if (!pyusdToken) throw new Error("Missing PYUSD_SEPOLIA in .env");
+    // 2) Get deployer
+    const [deployer] = await ethers.getSigners();
+    console.log("Deployer:", deployer.address);
+    console.log("Network:", networkName);
 
-    const Rail = await ethers.getContractFactory("PYUSDHandler");
-    const Kira = await ethers.getContractFactory("KiraPayAdapter");
-    const Rep  = await ethers.getContractFactory("Reputation");
-    const Esc  = await ethers.getContractFactory("Escrow");
+    // 3) Deploy contracts (adjust names/namespaces if your artifacts are in subfolders)
+    // Factories must match your actual contract names
+    const Reputation = await ethers.getContractFactory("Reputation");
+    const PYUSDHandler = await ethers.getContractFactory("PYUSDHandler");
+    const KiraPayAdapter = await ethers.getContractFactory("KiraPayAdapter");
+    const Escrow = await ethers.getContractFactory("Escrow");
 
-    const pyusdHandler = await Rail.deploy(pyusdToken);
-    await pyusdHandler.waitForDeployment();
-    const pyusdHandlerAddr = await pyusdHandler.getAddress();
-
-    const kiraPayAdapter = await Kira.deploy();
-    await kiraPayAdapter.waitForDeployment();
-    const kiraPayAdapterAddr = await kiraPayAdapter.getAddress();
-
-    const reputation = await Rep.deploy(ethers.ZeroAddress);
+    console.log("Deploying Reputation...");
+    const reputation = await Reputation.deploy(ethers.ZeroAddress);
     await reputation.waitForDeployment();
     const reputationAddr = await reputation.getAddress();
+    console.log("Reputation:", reputationAddr);
 
-    const escrow = await Esc.deploy(pyusdToken, pyusdHandlerAddr, kiraPayAdapterAddr, reputationAddr);
+    console.log("Deploying PYUSDHandler:", tokenAddress);
+    const rail = await PYUSDHandler.deploy(tokenAddress);
+    await rail.waitForDeployment();
+    const railAddr = await rail.getAddress();
+    console.log("PYUSDHandler:", railAddr);
+
+    console.log("Deploying KiraPayAdapter...");
+    const kiraPayAdapter = await KiraPayAdapter.deploy();
+    await kiraPayAdapter.waitForDeployment();
+    const kiraPayAdapterAddr = await kiraPayAdapter.getAddress();
+    console.log("KiraPayAdapter:", kiraPayAdapterAddr);
+
+    console.log("Deploying Escrow...");
+    // If your Escrow constructor expects different params, update here.
+    // Common patterns: Escrow(reputation, payer, arbiter) or Escrow(reputation)
+    const escrow = await Escrow.deploy(tokenAddress, railAddr, kiraPayAdapterAddr, reputationAddr);
     await escrow.waitForDeployment();
     const escrowAddr = await escrow.getAddress();
+    console.log("Escrow:", escrowAddr);
 
-    // wire roles / allowlists
-    const repTx = await reputation.addEscrow(escrowAddr);
-    await repTx.wait();
+    // 4) Optional: basic wiring if these functions exist. If not, you can comment them out safely.
+    try {
+      // @ts-ignore
+      if (typeof rail.allowEscrow === "function") {
+        // @ts-ignore
+        const tx = await rail.allowEscrow(escrowAddr, true);
+        await tx.wait();
+        console.log("Rail.allowEscrow(escrow, true) done");
+      }
+      // @ts-ignore
+      if (typeof kiraPayAdapter.allowEscrow === "function") {
+        // @ts-ignore
+        const tx = await kiraPayAdapter.allowEscrow(escrowAddr, true);
+        await tx.wait();
+        console.log("KiraPayAdapter.allowEscrow(escrow, true) done");
+      }
+      const addEscrowFn = (reputation as any).addEscrow;
+      if (typeof addEscrowFn === "function") {
+        const tx = await addEscrowFn(escrowAddr);
+        await tx.wait();
+        console.log("Reputation.addEscrow(escrow) done");
+      }
+    } catch (e) {
+      console.warn("Skipping rail.allowEscrow wiring:", e);
+    }
 
-    const allowPy = await (await ethers.getContractAt("PYUSDHandler", pyusdHandlerAddr)).allowEscrow(escrowAddr, true);
-    await allowPy.wait();
+    // 5) Persist addresses to .env.local for the frontend
+    const envLocalPath = path.join(process.cwd(), ".env.local");
+    const lines = [
+      `NEXT_PUBLIC_SEPOLIA_REPUTATION=${reputationAddr}`,
+      `NEXT_PUBLIC_SEPOLIA_KIRAPAY_ADAPTER=${kiraPayAdapterAddr}`,
+      `NEXT_PUBLIC_SEPOLIA_PYUSD_HANDLER=${railAddr}`,
+      `NEXT_PUBLIC_SEPOLIA_ESCROW=${escrowAddr}`,
+    ];
+    const content = lines.join("\n") + "\n";
 
-    const allowKira = await (await ethers.getContractAt("KiraPayAdapter", kiraPayAdapterAddr)).allowEscrow(escrowAddr, true);
-    await allowKira.wait();
+    if (!existsSync(envLocalPath)) {
+      writeFileSync(envLocalPath, content, { encoding: "utf8" });
+      console.log(".env.local created");
+    } else {
+      // append or replace: here we append so we don't disrupt other vars; frontend can pick the last occurrence
+      appendFileSync(envLocalPath, "\n" + content, { encoding: "utf8" });
+      console.log(".env.local updated");
+    }
 
-    const result = {
-      network: networkName,
-      pyusdToken,
-      pyusdHandler: pyusdHandlerAddr,
-      kiraPayAdapter: kiraPayAdapterAddr,
-      reputation: reputationAddr,
-      escrow: escrowAddr
-    };
-
-    console.log(JSON.stringify(result, null, 2));
-
-    await upsertEnvLocal({
-      PYUSD_HANDLER: pyusdHandlerAddr,
-      KIRAPAY_ADAPTER: kiraPayAdapterAddr,
-      REPUTATION: reputationAddr,
-      ESCROW: escrowAddr
-    });
-
-    console.log("\nSummary:");
-    console.log(`PYUSDHandler:   ${pyusdHandlerAddr}`);
-    console.log(`KiraPayAdapter: ${kiraPayAdapterAddr}`);
-    console.log(`Reputation:     ${reputationAddr}`);
-    console.log(`Escrow:         ${escrowAddr}`);
-    console.log("\nNote: IPaymentRail is an interface (no deployment address).");
+    // 6) Echo a summary at the end
+    console.log("=== Deploy Summary (Sepolia) ===");
+    console.log("Reputation:", reputationAddr);
+    console.log("KiraPayAdapter:", kiraPayAdapterAddr);
+    console.log("PYUSDHandler:", railAddr);
+    console.log("Escrow:", escrowAddr);
   } finally {
     await connection.close();
   }
 }
 
 main().catch((e) => {
-  console.error("Deployment failed:", e);
+  console.error(e);
   process.exit(1);
 });
