@@ -4,6 +4,7 @@ import './globals.css';
 import { ThemeProvider } from '@/providers/ThemeProvider';
 import { AppFrame } from '@/components/layout/AppFrame';
 import { AppToaster } from '@/components/ui/AppToaster';
+import { Web3Provider } from '@/providers/Web3Provider';
 
 export const metadata: Metadata = {
   title: 'RAAS Demo',
@@ -36,10 +37,12 @@ export default function RootLayout({ children }: RootLayoutProps) {
       className={`${bodyFont.variable} ${headingFont.variable}`}
     >
       <body>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <AppFrame>{children}</AppFrame>
-          <AppToaster />
-        </ThemeProvider>
+        <Web3Provider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+            <AppFrame>{children}</AppFrame>
+            <AppToaster />
+          </ThemeProvider>
+        </Web3Provider>
       </body>
     </html>
   );

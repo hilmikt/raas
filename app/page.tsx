@@ -1,7 +1,6 @@
 'use client';
 
 import { useAccount } from 'wagmi';
-import { Web3Provider } from '@/providers/Web3Provider';
 import Link from 'next/link';
 import { LandingHero } from '@/components/landing/LandingHero';
 import { WorkflowStrip } from '@/components/landing/WorkflowStrip';
@@ -36,9 +35,5 @@ function HomeContent() {
 }
 
 export default function HomePage() {
-  return (
-    <Web3Provider>
-      <HomeContent />
-    </Web3Provider>
-  );
+  return <HomeContent />;
 }
