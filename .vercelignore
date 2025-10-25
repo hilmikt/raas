@@ -1,0 +1,12 @@
+.next/
+node_modules/
+artifacts/
+cache/
+contracts/
+scripts/
+sdk/
+test/
+dist/
+coverage/
+pnpm-debug.log*
+*.tsbuildinfo

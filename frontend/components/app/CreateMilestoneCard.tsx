@@ -8,6 +8,7 @@ import { z } from "zod";
 import { createMilestone, encodeRef, getPyusdDecimals } from "@/app/lib/contracts";
 import { notify } from "@/components/ui/AppToaster";
 import { shortHash } from "@/app/lib/format";
+import { env } from "@/lib/env";
 
 type RailOption = "PYUSD" | "KIRAPAY";
 
@@ -37,7 +38,7 @@ const initialForm = {
   rail: "PYUSD" as RailOption,
 };
 
-const blockscoutBase = process.env.NEXT_PUBLIC_BLOCKSCOUT_BASE ?? "";
+const blockscoutBase = env.NEXT_PUBLIC_BLOCKSCOUT_BASE;
 
 export function CreateMilestoneCard({ onCreated }: Props) {
   const { address } = useAccount();

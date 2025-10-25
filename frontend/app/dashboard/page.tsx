@@ -95,7 +95,7 @@ export default function DashboardPage() {
         )}
         {milestonesQuery.data && milestonesQuery.data.length === 0 && (
           <p className="rounded-3xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
-            No milestones yet — create one above to get started.
+            No milestones yet -- create one above to get started.
           </p>
         )}
         <div className="space-y-4">

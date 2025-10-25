@@ -1,7 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  experimental: {},
+  transpilePackages: ["wagmi", "viem"],
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
 };
 
 export default nextConfig;

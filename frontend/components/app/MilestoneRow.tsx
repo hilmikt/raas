@@ -8,8 +8,9 @@ import { approve, encodeExtra, fund, getPyusdDecimals, release } from "@/app/lib
 import { formatAddress, formatAmount, shortHash } from "@/app/lib/format";
 import type { Milestone } from "@/app/lib/milestones";
 import { notify } from "@/components/ui/AppToaster";
+import { env } from "@/lib/env";
 
-const blockscoutBase = process.env.NEXT_PUBLIC_BLOCKSCOUT_BASE ?? "";
+const blockscoutBase = env.NEXT_PUBLIC_BLOCKSCOUT_BASE;
 
 type Props = {
   milestone: Milestone;
@@ -51,7 +52,7 @@ export function MilestoneRow({ milestone, onMutated, onReputationRefresh }: Prop
           }
         : undefined,
     });
-  }, [pendingHash]);
+  }, [blockscoutBase, pendingHash]);
 
   useEffect(() => {
     if (!receipt.data || !pendingHash) return;
@@ -108,7 +109,7 @@ export function MilestoneRow({ milestone, onMutated, onReputationRefresh }: Prop
       setSubmitting(false);
       setLastAction(undefined);
     }
-  }, [amount, milestone.id]);
+  }, [amount, blockscoutBase, milestone.id]);
 
   const handleReleasePyusd = useCallback(async () => {
     setSubmitting(true);

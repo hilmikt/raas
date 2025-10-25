@@ -4,8 +4,9 @@ import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { sepolia } from 'wagmi/chains';
+import { env } from '@/lib/env';
 
-const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL ?? sepolia.rpcUrls.default.http[0];
+const rpcUrl = env.NEXT_PUBLIC_RPC_URL ?? sepolia.rpcUrls.default.http[0];
 
 export const wagmiConfig = createConfig({
   chains: [sepolia],

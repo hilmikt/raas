@@ -9,6 +9,7 @@ import {
 import { sepolia } from "viem/chains";
 import { current } from "@/app/config/addresses";
 import type { Milestone, RailKind } from "@/app/lib/milestones";
+import { env } from "@/lib/env";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 
@@ -72,8 +73,8 @@ function toHexValue(value: unknown): Hex {
 
 function publicClient() {
   const rpc =
-    process.env.SEPOLIA_RPC ||
-    process.env.NEXT_PUBLIC_RPC_URL ||
+    env.SEPOLIA_RPC ||
+    env.NEXT_PUBLIC_RPC_URL ||
     sepolia.rpcUrls.default.http[0];
   return createPublicClient({
     chain: sepolia,

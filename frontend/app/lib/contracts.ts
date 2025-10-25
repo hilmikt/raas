@@ -8,9 +8,10 @@ import ReputationAbi from "@/app/lib/abi/Reputation";
 import { wagmiConfig } from "@/providers/Web3Provider";
 import { current } from "@/app/config/addresses";
 import type { Milestone } from "@/app/lib/milestones";
+import { env } from "@/lib/env";
 
 const addresses = current();
-const TARGET_CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 0);
+const TARGET_CHAIN_ID = env.CHAIN_ID;
 
 function ensureChain(chainId?: number) {
   if (!TARGET_CHAIN_ID) return;

@@ -4,9 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "engines": {
-    "node": ">=18.18.0"
+    "node": ">=20.0.0"
   },
   "scripts": {
+    "dev": "pnpm --filter ./frontend... dev",
+    "build": "pnpm --filter ./frontend... build",
+    "start": "pnpm --filter ./frontend... start",
+    "lint": "pnpm --filter ./frontend... lint",
     "compile": "hardhat compile",
     "dev:web": "pnpm --filter ./frontend dev",
     "build:web": "pnpm --filter ./frontend build",
@@ -33,5 +37,6 @@
       "@nomiclabs/hardhat-ethers": "npm:@nomicfoundation/hardhat-ethers@4.0.2",
       "@ethersproject/*": "npm:ethers@6.15.0"
     }
-  }
+  },
+  "packageManager": "pnpm@10.17.1"
 }
