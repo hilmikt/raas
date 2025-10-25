@@ -1,0 +1,7 @@
+{
+  "buildCommand": "cd frontend && pnpm build",
+  "outputDirectory": "frontend/.next",
+  "installCommand": "pnpm i --filter ./frontend... --frozen-lockfile || pnpm i --filter ./frontend...",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD || echo 'changes'",
+  "framework": "nextjs"
+}

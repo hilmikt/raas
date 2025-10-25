@@ -4,7 +4,7 @@ export function formatAddress(address?: string | null, size = 4) {
   if (!address) return "";
   const prefix = address.slice(0, size + 2);
   const suffix = address.slice(-size);
-  return `${prefix}…${suffix}`;
+  return `${prefix}...${suffix}`;
 }
 
 export function formatAmount(
@@ -22,5 +22,5 @@ export function formatAmount(
 
 export function shortHash(hash?: string | null, size = 6) {
   if (!hash) return "";
-  return `${hash.slice(0, size + 2)}…${hash.slice(-size)}`;
+  return `${hash.slice(0, size + 2)}...${hash.slice(-size)}`;
 }

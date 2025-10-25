@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useAccount } from "wagmi";
-import type { Hex } from "viem";
-import { useEscrow, pyusd } from "@/app/lib/contracts";
+import { useAccount, useWaitForTransactionReceipt } from "wagmi";
+import { useQuery } from "@tanstack/react-query";
+import type { Hash } from "viem";
+import { approve, encodeExtra, fund, getPyusdDecimals, release } from "@/app/lib/contracts";
 import { formatAddress, formatAmount, shortHash } from "@/app/lib/format";
 import type { Milestone } from "@/app/lib/milestones";
 import { notify } from "@/components/ui/AppToaster";
@@ -18,19 +19,26 @@ type Props = {
 
 export function MilestoneRow({ milestone, onMutated, onReputationRefresh }: Props) {
   const { address } = useAccount();
-  const decimalsQuery = pyusd.useDecimals();
-  const decimals = useMemo(
-    () => Number(decimalsQuery.data ?? 6),
-    [decimalsQuery.data],
-  );
+  const decimalsQuery = useQuery({
+    queryKey: ["pyusd-decimals"],
+    queryFn: getPyusdDecimals,
+    staleTime: Infinity,
+  });
 
+  const decimals = useMemo(() => decimalsQuery.data ?? 6, [decimalsQuery.data]);
   const amount = useMemo(() => BigInt(milestone.amount), [milestone.amount]);
   const [kiraRef, setKiraRef] = useState("");
-  const [txHash, setTxHash] = useState<Hex | undefined>();
+  const [pendingHash, setPendingHash] = useState<Hash | undefined>();
   const [isSubmitting, setSubmitting] = useState(false);
   const [lastAction, setLastAction] = useState<"fund" | "release" | undefined>();
 
-  const { fund, releasePYUSD, releaseKiraPay, pendingHash, receipt, reset } = useEscrow();
+  const receipt = useWaitForTransactionReceipt({
+    hash: pendingHash,
+    query: {
+      enabled: Boolean(pendingHash),
+      refetchInterval: pendingHash ? 2000 : false,
+    },
+  });
 
   useEffect(() => {
     if (!pendingHash) return;
@@ -38,19 +46,17 @@ export function MilestoneRow({ milestone, onMutated, onReputationRefresh }: Prop
       description: shortHash(pendingHash),
       action: blockscoutBase
         ? {
-            label: "Blockscout",
-            onClick: () =>
-              window.open(`${blockscoutBase}/tx/${pendingHash}`, "_blank"),
+            label: "Explorer",
+            onClick: () => window.open(`${blockscoutBase}/tx/${pendingHash}`, "_blank"),
           }
         : undefined,
     });
-    setTxHash(pendingHash);
   }, [pendingHash]);
 
   useEffect(() => {
-    if (!receipt.data || !txHash) return;
+    if (!receipt.data || !pendingHash) return;
     if (receipt.data.status === "success") {
-      notify("Transaction confirmed", { description: shortHash(txHash) });
+      notify("Transaction confirmed", { description: shortHash(pendingHash) });
       onMutated?.();
       if (lastAction === "release") {
         onReputationRefresh?.();
@@ -63,102 +69,86 @@ export function MilestoneRow({ milestone, onMutated, onReputationRefresh }: Prop
     }
     setSubmitting(false);
     setLastAction(undefined);
-    reset();
-  }, [lastAction, onMutated, onReputationRefresh, receipt.data, reset, txHash]);
+    setPendingHash(undefined);
+  }, [lastAction, onMutated, onReputationRefresh, pendingHash, receipt.data]);
 
   useEffect(() => {
     if (!receipt.error) return;
     notify("Transaction error", {
-      description:
-        receipt.error instanceof Error ? receipt.error.message : "Transaction failed",
+      description: receipt.error instanceof Error ? receipt.error.message : "Transaction failed",
     });
     setSubmitting(false);
     setLastAction(undefined);
-    reset();
-  }, [receipt.error, reset]);
+    setPendingHash(undefined);
+  }, [receipt.error]);
 
   const handleFund = useCallback(async () => {
     setSubmitting(true);
     setLastAction("fund");
     try {
-      notify("Opening wallet…", { description: "Approve and fund milestone" });
-      const { approvalHash, txHash } = await fund({
-        id: BigInt(milestone.id),
-        amount,
-      });
+      notify("Opening wallet...", { description: "Approve and fund milestone" });
+      const { approvalHash, fundHash } = await fund(BigInt(milestone.id), amount);
       if (approvalHash) {
         notify("Approval submitted", {
           description: shortHash(approvalHash),
           action: blockscoutBase
             ? {
-                label: "Blockscout",
-                onClick: () =>
-                  window.open(`${blockscoutBase}/tx/${approvalHash}`, "_blank"),
+                label: "Explorer",
+                onClick: () => window.open(`${blockscoutBase}/tx/${approvalHash}`, "_blank"),
               }
             : undefined,
         });
       }
-      setTxHash(txHash);
+      setPendingHash(fundHash);
     } catch (error) {
       console.error(error);
       notify("Funding failed", {
-        description:
-          error instanceof Error ? error.message : "Unexpected error occurred",
+        description: error instanceof Error ? error.message : "Unexpected error occurred",
       });
       setSubmitting(false);
       setLastAction(undefined);
     }
-  }, [amount, fund, milestone.id]);
+  }, [amount, milestone.id]);
 
-  const handleReleasePYUSD = useCallback(async () => {
+  const handleReleasePyusd = useCallback(async () => {
     setSubmitting(true);
     setLastAction("release");
     try {
-      notify("Opening wallet…", { description: "Release to worker" });
-      const hash = await releasePYUSD({ id: BigInt(milestone.id) });
-      setTxHash(hash);
+      notify("Opening wallet...", { description: "Release to worker" });
+      const hash = await release(BigInt(milestone.id), "0x");
+      setPendingHash(hash);
     } catch (error) {
       console.error(error);
       notify("Release failed", {
-        description:
-          error instanceof Error ? error.message : "Unexpected error occurred",
+        description: error instanceof Error ? error.message : "Unexpected error occurred",
       });
       setSubmitting(false);
       setLastAction(undefined);
     }
-  }, [milestone.id, releasePYUSD]);
+  }, [milestone.id]);
 
   const handleReleaseKira = useCallback(async () => {
-    if (!kiraRef.trim()) {
-      notify("Enter KIRAPAY reference", {
-        description: "Provide the offchain anchor reference",
-      });
-      return;
-    }
+    if (!kiraRef) return;
     setSubmitting(true);
     setLastAction("release");
     try {
-      notify("Opening wallet…", { description: "Anchor KIRAPAY release" });
-      const hash = await releaseKiraPay({
-        id: BigInt(milestone.id),
-        reference: kiraRef.trim(),
-      });
-      setTxHash(hash);
+      notify("Opening wallet...", { description: "Anchor KIRAPAY completion" });
+      const hash = await approve(BigInt(milestone.id), encodeExtra(kiraRef));
+      setPendingHash(hash);
     } catch (error) {
       console.error(error);
       notify("Release failed", {
-        description:
-          error instanceof Error ? error.message : "Unexpected error occurred",
+        description: error instanceof Error ? error.message : "Unexpected error occurred",
       });
       setSubmitting(false);
       setLastAction(undefined);
     }
-  }, [kiraRef, milestone.id, releaseKiraPay]);
+  }, [kiraRef, milestone.id]);
 
-  const amountFormatted = formatAmount(amount, decimals);
-  const isPyusdRail = milestone.rail === "PYUSD";
-  const isReleased = milestone.released;
+  const amountFormatted = useMemo(() => formatAmount(amount, decimals), [amount, decimals]);
   const isFunded = milestone.funded;
+  const isReleased = milestone.released;
+  const isPyusdRail = milestone.rail === "PYUSD";
   const isClient = address?.toLowerCase() === milestone.client.toLowerCase();
 
   return (
@@ -166,53 +156,31 @@ export function MilestoneRow({ milestone, onMutated, onReputationRefresh }: Prop
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">
-              Milestone #{milestone.id}
-            </span>
-            <span className="rounded-full bg-secondary/40 px-2 py-0.5 text-xs">
-              {milestone.rail}
-            </span>
+            <span className="font-medium text-foreground">Milestone #{milestone.id}</span>
+            <span className="rounded-full bg-secondary/40 px-2 py-0.5 text-xs">{milestone.rail}</span>
             {milestone.canceled && (
-              <span className="rounded-full bg-destructive/20 px-2 py-0.5 text-xs text-destructive">
-                Canceled
-              </span>
+              <span className="rounded-full bg-destructive/20 px-2 py-0.5 text-xs text-destructive">Canceled</span>
             )}
             {isReleased && (
-              <span className="rounded-full bg-success/20 px-2 py-0.5 text-xs text-success">
-                Released
-              </span>
+              <span className="rounded-full bg-success/20 px-2 py-0.5 text-xs text-success">Released</span>
             )}
           </div>
           <dl className="mt-2 space-y-1 text-xs text-muted-foreground">
             <div className="flex gap-2">
-              <dt className="w-16 uppercase tracking-wide text-[10px] text-muted-foreground/80">
-                Worker
-              </dt>
-              <dd className="font-mono text-foreground">
-                {formatAddress(milestone.worker, 4)}
-              </dd>
+              <dt className="w-16 uppercase tracking-wide text-[10px] text-muted-foreground/80">Worker</dt>
+              <dd className="font-mono text-foreground">{formatAddress(milestone.worker, 4)}</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="w-16 uppercase tracking-wide text-[10px] text-muted-foreground/80">
-                Amount
-              </dt>
-              <dd className="font-medium text-foreground">
-                {amountFormatted} PYUSD
-              </dd>
+              <dt className="w-16 uppercase tracking-wide text-[10px] text-muted-foreground/80">Amount</dt>
+              <dd className="font-medium text-foreground">{amountFormatted} PYUSD</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="w-16 uppercase tracking-wide text-[10px] text-muted-foreground/80">
-                Ref
-              </dt>
-              <dd className="font-mono text-foreground">
-                {milestone.reference || milestone.referenceHex}
-              </dd>
+              <dt className="w-16 uppercase tracking-wide text-[10px] text-muted-foreground/80">Ref</dt>
+              <dd className="font-mono text-foreground">{milestone.reference || milestone.referenceHex}</dd>
             </div>
             {milestone.extra && (
               <div className="flex gap-2">
-                <dt className="w-16 uppercase tracking-wide text-[10px] text-muted-foreground/80">
-                  Extra
-                </dt>
+                <dt className="w-16 uppercase tracking-wide text-[10px] text-muted-foreground/80">Extra</dt>
                 <dd className="font-mono text-foreground">{milestone.extra}</dd>
               </div>
             )}
@@ -224,7 +192,9 @@ export function MilestoneRow({ milestone, onMutated, onReputationRefresh }: Prop
               <button
                 type="button"
                 className="btn-primary rounded-2xl px-4 py-2 font-medium disabled:cursor-not-allowed disabled:opacity-60"
-                onClick={handleFund}
+                onClick={() => {
+                  void handleFund();
+                }}
                 disabled={isSubmitting}
               >
                 Approve + Fund
@@ -234,7 +204,9 @@ export function MilestoneRow({ milestone, onMutated, onReputationRefresh }: Prop
               <button
                 type="button"
                 className="btn-secondary rounded-2xl px-4 py-2 font-medium disabled:cursor-not-allowed disabled:opacity-60"
-                onClick={handleReleasePYUSD}
+                onClick={() => {
+                  void handleReleasePyusd();
+                }}
                 disabled={isSubmitting}
               >
                 Release PYUSD
@@ -264,20 +236,18 @@ export function MilestoneRow({ milestone, onMutated, onReputationRefresh }: Prop
                 </button>
               </form>
             )}
-            {txHash && (
+            {pendingHash && (
               blockscoutBase ? (
                 <a
                   className="text-xs text-primary underline underline-offset-2"
-                  href={`${blockscoutBase}/tx/${txHash}`}
+                  href={`${blockscoutBase}/tx/${pendingHash}`}
                   target="_blank"
                   rel="noreferrer"
                 >
                   View tx
                 </a>
               ) : (
-                <span className="text-xs text-muted-foreground">
-                  {shortHash(txHash)}
-                </span>
+                <span className="text-xs text-muted-foreground">{shortHash(pendingHash)}</span>
               )
             )}
           </div>

@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
   });
 
   const railLogs = await Promise.all(
-    [addresses.PYUSD_RAIL, addresses.KIRAPAY_ADAPTER].map((railAddress) =>
+    [addresses.PYUSD_HANDLER, addresses.KIRAPAY_ADAPTER].map((railAddress) =>
       client.getLogs({
         address: railAddress,
         event: RAIL_SETTLED,

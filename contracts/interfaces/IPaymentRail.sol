@@ -3,7 +3,14 @@ pragma solidity ^0.8.24;
 
 interface IPaymentRail {
     /// @dev Emitted by payment rails on successful "settlement" (onchain or anchored offchain).
-    event RailSettled(address indexed escrow, address indexed payer, address indexed payee, uint256 amount, bytes32 ref, bytes extra);
+    event RailSettled(
+        address indexed escrow,
+        address indexed payer,
+        address indexed payee,
+        uint256 amount,
+        bytes32 ref,
+        bytes extra
+    );
 
     /// @notice Escrow calls this to settle a payout.
     /// @param escrow The escrow contract invoking the rail (msg.sender should be `escrow`).

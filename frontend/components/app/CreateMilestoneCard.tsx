@@ -1,14 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useAccount } from "wagmi";
-import { parseUnits } from "viem";
+import { useAccount, useWaitForTransactionReceipt } from "wagmi";
+import { useQuery } from "@tanstack/react-query";
+import { parseUnits, type Address, type Hash } from "viem";
 import { z } from "zod";
-import { encodeRef, useEscrow, pyusd } from "@/app/lib/contracts";
+import { createMilestone, encodeRef, getPyusdDecimals } from "@/app/lib/contracts";
 import { notify } from "@/components/ui/AppToaster";
 import { shortHash } from "@/app/lib/format";
 
 type RailOption = "PYUSD" | "KIRAPAY";
+
+type Props = {
+  onCreated?: () => void;
+};
 
 const schema = z.object({
   worker: z
@@ -34,28 +39,34 @@ const initialForm = {
 
 const blockscoutBase = process.env.NEXT_PUBLIC_BLOCKSCOUT_BASE ?? "";
 
-type Props = {
-  onCreated?: () => void;
-};
-
 export function CreateMilestoneCard({ onCreated }: Props) {
   const { address } = useAccount();
-  const { createMilestone, pendingHash, receipt, reset } = useEscrow();
-  const decimalsQuery = pyusd.useDecimals();
-  const decimals = useMemo(
-    () => Number(decimalsQuery.data ?? 6),
-    [decimalsQuery.data],
-  );
-
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setSubmitting] = useState(false);
-  const [lastHash, setLastHash] = useState<string | undefined>();
+  const [pendingHash, setPendingHash] = useState<Hash | undefined>();
+  const [lastHash, setLastHash] = useState<Hash | undefined>();
+
+  const decimalsQuery = useQuery({
+    queryKey: ["pyusd-decimals"],
+    queryFn: getPyusdDecimals,
+    staleTime: Infinity,
+  });
+
+  const decimals = useMemo(() => decimalsQuery.data ?? 6, [decimalsQuery.data]);
+
+  const receipt = useWaitForTransactionReceipt({
+    hash: pendingHash,
+    query: {
+      enabled: Boolean(pendingHash),
+      refetchInterval: pendingHash ? 2000 : false,
+    },
+  });
 
   useEffect(() => {
     if (!pendingHash) return;
     if (receipt.isLoading) {
-      notify("Transaction pending…", {
+      notify("Transaction pending...", {
         description: shortHash(pendingHash),
       });
     }
@@ -68,9 +79,8 @@ export function CreateMilestoneCard({ onCreated }: Props) {
         description: shortHash(pendingHash),
         action: blockscoutBase
           ? {
-              label: "Blockscout",
-              onClick: () =>
-                window.open(`${blockscoutBase}/tx/${pendingHash}`, "_blank"),
+              label: "Explorer",
+              onClick: () => window.open(`${blockscoutBase}/tx/${pendingHash}`, "_blank"),
             }
           : undefined,
       });
@@ -84,20 +94,21 @@ export function CreateMilestoneCard({ onCreated }: Props) {
       });
     }
     setSubmitting(false);
-    reset();
-  }, [pendingHash, receipt.data, onCreated, reset]);
+    setPendingHash(undefined);
+  }, [blockscoutBase, onCreated, pendingHash, receipt.data]);
 
   useEffect(() => {
     if (!receipt.error) return;
     notify("Transaction error", {
-      description:
-        receipt.error instanceof Error
-          ? receipt.error.message
-          : "Transaction failed",
+      description: receipt.error instanceof Error ? receipt.error.message : "Transaction failed",
     });
     setSubmitting(false);
-    reset();
-  }, [receipt.error, reset]);
+    setPendingHash(undefined);
+  }, [receipt.error]);
+
+  const onChange = useCallback((key: keyof typeof form, value: string) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }, []);
 
   const onSubmit = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
@@ -126,28 +137,22 @@ export function CreateMilestoneCard({ onCreated }: Props) {
       }
 
       try {
-        const { worker, amount, reference, rail } = parsed.data;
-        const amountUnits = parseUnits(amount, decimals);
-        const referenceBytes = encodeRef(reference);
-        notify("Opening wallet…", { description: "Confirm milestone creation" });
-        const txHash = await createMilestone({
-          worker: worker as `0x${string}`,
-          amount: amountUnits,
-          reference: referenceBytes,
-          rail: rail === "PYUSD" ? 0 : 1,
-        });
-        setLastHash(txHash);
-      } catch (err) {
-        console.error(err);
-        notify("Unable to create milestone", {
-          description:
-            err instanceof Error ? err.message : "Unexpected error occurred",
+        const railValue = form.rail === "PYUSD" ? 0 : 1;
+        const amount = parseUnits(form.amount, decimals);
+        const worker = parsed.data.worker as Address;
+        const reference = encodeRef(parsed.data.reference);
+        notify("Opening wallet...", { description: "Confirm milestone creation" });
+        const hash = await createMilestone(worker, amount, reference, railValue);
+        setPendingHash(hash);
+      } catch (error) {
+        console.error(error);
+        notify("Milestone failed", {
+          description: error instanceof Error ? error.message : "Unexpected error occurred",
         });
         setSubmitting(false);
-        reset();
       }
     },
-    [address, createMilestone, decimals, form, reset],
+    [address, decimals, form],
   );
 
   return (
@@ -160,65 +165,54 @@ export function CreateMilestoneCard({ onCreated }: Props) {
       </header>
       <form className="space-y-4" onSubmit={onSubmit}>
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-muted-foreground">
+          <label className="block text-sm font-medium text-muted-foreground" htmlFor="worker">
             Worker Address
           </label>
           <input
+            id="worker"
             className="w-full rounded-2xl border border-border/60 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             name="worker"
             value={form.worker}
-            onChange={(e) =>
-              setForm((prev) => ({ ...prev, worker: e.target.value }))
-            }
+            onChange={(e) => onChange("worker", e.target.value)}
             placeholder="0x..."
             disabled={isSubmitting}
           />
-          {errors.worker && (
-            <p className="text-xs text-destructive">{errors.worker}</p>
-          )}
+          {errors.worker && <p className="text-xs text-destructive">{errors.worker}</p>}
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-muted-foreground">
+            <label className="block text-sm font-medium text-muted-foreground" htmlFor="amount">
               Amount (PYUSD)
             </label>
             <input
+              id="amount"
               className="w-full rounded-2xl border border-border/60 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               name="amount"
               value={form.amount}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, amount: e.target.value }))
-              }
+              onChange={(e) => onChange("amount", e.target.value)}
               placeholder="100"
               disabled={isSubmitting}
             />
-            {errors.amount && (
-              <p className="text-xs text-destructive">{errors.amount}</p>
-            )}
+            {errors.amount && <p className="text-xs text-destructive">{errors.amount}</p>}
           </div>
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-muted-foreground">
+            <label className="block text-sm font-medium text-muted-foreground" htmlFor="reference">
               Reference
             </label>
             <input
+              id="reference"
               className="w-full rounded-2xl border border-border/60 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               name="reference"
               value={form.reference}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, reference: e.target.value }))
-              }
+              onChange={(e) => onChange("reference", e.target.value)}
               placeholder="Milestone-001"
               disabled={isSubmitting}
             />
-            {errors.reference && (
-              <p className="text-xs text-destructive">{errors.reference}</p>
-            )}
+            {errors.reference && <p className="text-xs text-destructive">{errors.reference}</p>}
           </div>
         </div>
         <fieldset className="space-y-2">
-          <legend className="text-sm font-medium text-muted-foreground">
-            Rail
-          </legend>
+          <legend className="text-sm font-medium text-muted-foreground">Rail</legend>
           <div className="flex gap-4">
             {(["PYUSD", "KIRAPAY"] as RailOption[]).map((option) => (
               <label
@@ -229,9 +223,7 @@ export function CreateMilestoneCard({ onCreated }: Props) {
                   type="radio"
                   className="text-primary focus:ring-primary"
                   checked={form.rail === option}
-                  onChange={() =>
-                    setForm((prev) => ({ ...prev, rail: option }))
-                  }
+                  onChange={() => onChange("rail", option)}
                   disabled={isSubmitting}
                 />
                 {option}
@@ -244,11 +236,11 @@ export function CreateMilestoneCard({ onCreated }: Props) {
           className="btn-primary inline-flex w-full justify-center rounded-2xl px-4 py-2 text-sm font-medium shadow-surface transition hover:shadow-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
           disabled={isSubmitting || !address}
         >
-          {isSubmitting ? "Submitting…" : "Create milestone"}
+          {isSubmitting ? "Submitting..." : "Create milestone"}
         </button>
         {lastHash && (
           <p className="text-xs text-muted-foreground">
-            Latest tx:{" "}
+            Latest tx: {" "}
             {blockscoutBase ? (
               <a
                 className="text-primary underline underline-offset-2"

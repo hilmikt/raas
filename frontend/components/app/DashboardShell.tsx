@@ -1,8 +1,7 @@
 'use client';
 
 import { Boxes, FileCheck2, ScrollText } from 'lucide-react';
-import { useAccount, useEnsName } from 'wagmi';
-import { chains } from '@/providers/Web3Provider';
+import { useAccount, useEnsName, useSwitchChain } from 'wagmi';
 import { DashboardCard } from '@/components/app/DashboardCard';
 import { NetworkBanner } from '@/components/app/NetworkBanner';
 import { SiteHeader } from '@/components/layout/SiteHeader';
@@ -13,6 +12,7 @@ const cardIllustrationClasses =
 
 export function DashboardShell() {
   const { status, chainId, address } = useAccount();
+  const { chains } = useSwitchChain();
   const isConnected = status === 'connected' || status === 'reconnecting';
   const { data: ensName } = useEnsName({ address, chainId: undefined, query: { enabled: Boolean(address) } });
 

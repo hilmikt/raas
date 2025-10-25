@@ -4,7 +4,7 @@ import './globals.css';
 import { ThemeProvider } from '@/providers/ThemeProvider';
 import { AppFrame } from '@/components/layout/AppFrame';
 import { AppToaster } from '@/components/ui/AppToaster';
-import { Web3Provider } from '@/providers/Web3Provider';
+import Web3Provider from '@/providers/Web3Provider';
 
 export const metadata: Metadata = {
   title: 'RAAS Demo',

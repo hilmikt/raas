@@ -2,14 +2,12 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAccount, useSwitchChain } from "wagmi";
+import { useAccount } from "wagmi";
 import { CreateMilestoneCard } from "@/components/app/CreateMilestoneCard";
 import { MilestoneRow } from "@/components/app/MilestoneRow";
 import { ReputationBadge } from "@/components/app/ReputationBadge";
+import { NetworkBanner } from "@/components/app/NetworkBanner";
 import type { Milestone } from "@/app/lib/milestones";
-import { notify } from "@/components/ui/AppToaster";
-
-const targetChainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 11155111);
 
 async function fetchMilestones(): Promise<Milestone[]> {
   const res = await fetch("/api/milestones", { cache: "no-store" });
@@ -21,8 +19,7 @@ async function fetchMilestones(): Promise<Milestone[]> {
 
 export default function DashboardPage() {
   const queryClient = useQueryClient();
-  const { address, chainId, isConnected } = useAccount();
-  const { switchChain, switchChainAsync } = useSwitchChain();
+  const { address } = useAccount();
 
   const [reputationTick, setReputationTick] = useState(0);
 
@@ -37,20 +34,6 @@ export default function DashboardPage() {
   const handleCreateCompleted = useCallback(() => {
     refreshMilestones();
   }, [refreshMilestones]);
-
-  const handleChainSwitch = useCallback(async () => {
-    try {
-      if (switchChainAsync) {
-        await switchChainAsync({ chainId: targetChainId });
-      } else {
-        switchChain({ chainId: targetChainId });
-      }
-    } catch (err) {
-      notify("Failed to switch network", {
-        description: err instanceof Error ? err.message : "",
-      });
-    }
-  }, [switchChain, switchChainAsync]);
 
   const milestonesQuery = useQuery({
     queryKey: ["milestones"],
@@ -67,9 +50,6 @@ export default function DashboardPage() {
     return Array.from(seen);
   }, [milestonesQuery.data]);
 
-  const wrongNetwork =
-    isConnected && chainId !== undefined && chainId !== targetChainId;
-
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 pb-24 pt-10">
       <header className="space-y-2">
@@ -81,22 +61,7 @@ export default function DashboardPage() {
         </p>
       </header>
 
-      {wrongNetwork && (
-        <div className="rounded-3xl border border-destructive/60 bg-destructive/10 p-4 text-sm text-destructive">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span>Please switch to Sepolia (chain id {targetChainId}).</span>
-            <button
-              type="button"
-              className="rounded-2xl bg-destructive px-4 py-2 text-xs font-semibold text-destructive-foreground"
-              onClick={() => {
-                void handleChainSwitch();
-              }}
-            >
-              Switch network
-            </button>
-          </div>
-        </div>
-      )}
+      <NetworkBanner />
 
       <CreateMilestoneCard onCreated={handleCreateCompleted} />
 
@@ -120,7 +85,7 @@ export default function DashboardPage() {
         </header>
         {milestonesQuery.isLoading && (
           <p className="rounded-3xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
-            Loading milestones…
+            Loading milestones...
           </p>
         )}
         {milestonesQuery.isError && (
