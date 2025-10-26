@@ -27,6 +27,13 @@ const envSchema = z.object({
   NEXT_PUBLIC_BLOCKSCOUT_BASE: optionalUrlSchema,
   NEXT_PUBLIC_RPC_URL: optionalUrlSchema,
   SEPOLIA_RPC: optionalUrlSchema,
+  NEXT_PUBLIC_WC_PROJECT_ID: z
+    .union([z.string().trim(), z.literal(""), z.undefined()])
+    .transform((value) => {
+      if (!value) return undefined;
+      const trimmed = value.trim();
+      return trimmed ? trimmed : undefined;
+    }),
 });
 
 type NormalizedEnv = {
@@ -40,6 +47,7 @@ type NormalizedEnv = {
   NEXT_PUBLIC_BLOCKSCOUT_BASE?: string;
   NEXT_PUBLIC_RPC_URL?: string;
   SEPOLIA_RPC?: string;
+  NEXT_PUBLIC_WC_PROJECT_ID?: string;
 };
 
 const parsed = envSchema.safeParse({
@@ -52,6 +60,7 @@ const parsed = envSchema.safeParse({
   NEXT_PUBLIC_BLOCKSCOUT_BASE: process.env.NEXT_PUBLIC_BLOCKSCOUT_BASE,
   NEXT_PUBLIC_RPC_URL: process.env.NEXT_PUBLIC_RPC_URL,
   SEPOLIA_RPC: process.env.SEPOLIA_RPC,
+  NEXT_PUBLIC_WC_PROJECT_ID: process.env.NEXT_PUBLIC_WC_PROJECT_ID,
 });
 
 let normalizedEnv: NormalizedEnv | null = null;
@@ -81,6 +90,7 @@ if (!parsed.success) {
       NEXT_PUBLIC_BLOCKSCOUT_BASE: parsed.data.NEXT_PUBLIC_BLOCKSCOUT_BASE,
       NEXT_PUBLIC_RPC_URL: parsed.data.NEXT_PUBLIC_RPC_URL,
       SEPOLIA_RPC: parsed.data.SEPOLIA_RPC,
+      NEXT_PUBLIC_WC_PROJECT_ID: parsed.data.NEXT_PUBLIC_WC_PROJECT_ID,
     };
   }
 }

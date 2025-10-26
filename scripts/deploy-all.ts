@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "fs";
 import path from "path";
-import { ethers } from "hardhat";
+import { network } from "hardhat";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -20,6 +20,8 @@ async function main() {
   requireEnv("PRIVATE_KEY");
   requireEnv("SEPOLIA_RPC");
   const pyusd = requireEnv("PYUSD_ADDRESS");
+
+  const { ethers } = await network.connect();
 
   const [deployer] = await ethers.getSigners();
   console.log(`Deployer: ${deployer.address}`);
@@ -77,6 +79,8 @@ async function main() {
     writeAddressesFile({ ...summary, PYUSD: pyusd });
     console.log(`Wrote addresses.local.json to /frontend/app/config`);
   }
+
+  console.log(`\nUpdate frontend/.env.local with NEXT_PUBLIC_ESCROW=${escrowAddress}`);
 
   console.log(JSON.stringify(summary));
 }

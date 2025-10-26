@@ -9,9 +9,7 @@ import { SiteHeader } from '@/components/layout/SiteHeader';
 import { truncateAddress } from '@/lib/format';
 import { RecentEvents } from '@/components/app/RecentEvents';
 import { Attestations } from '@/components/app/Attestations';
-
-const cardIllustrationClasses =
-  'mx-auto h-20 w-20 text-primary/70 transition group-hover:text-primary';
+import { OpenEscrowsCard } from '@/components/app/OpenEscrowsCard';
 
 export function DashboardShell() {
   const { status, chainId, address } = useAccount();
@@ -61,19 +59,7 @@ export function DashboardShell() {
               </Link>
             }
           >
-            <div className="group relative flex flex-1 flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border/70 bg-background/50 p-6 text-center">
-              <svg viewBox="0 0 120 120" className={cardIllustrationClasses} role="img" aria-hidden="true">
-                <rect x="18" y="26" width="84" height="68" rx="18" fill="currentColor" opacity="0.12" />
-                <rect x="30" y="38" width="60" height="12" rx="6" fill="currentColor" opacity="0.3" />
-                <rect x="30" y="58" width="32" height="12" rx="6" fill="currentColor" opacity="0.18" />
-                <rect x="30" y="78" width="52" height="12" rx="6" fill="currentColor" opacity="0.15" />
-              </svg>
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  No escrows yet. Kick off a brief to see milestones and collaborators populate instantly.
-                </p>
-              </div>
-            </div>
+            <OpenEscrowsCard />
           </DashboardCard>
           <DashboardCard
             title="Reputation Proofs"

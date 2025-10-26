@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { LandingHero } from '@/components/landing/LandingHero';
 import { WorkflowStrip } from '@/components/landing/WorkflowStrip';
 import { DashboardShell } from '@/components/app/DashboardShell';
-import { ConnectButton } from '@/components/wallet/ConnectButton';
+import { ConnectCTA } from '@/components/wallet/ConnectCTA';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 
 function LandingState() {
@@ -14,7 +14,7 @@ function LandingState() {
       <SiteHeader showConnect={false} />
       <main className="flex flex-1 flex-col items-center gap-16 pb-20 pt-12 sm:pt-10">
         <LandingHero
-          primaryAction={<ConnectButton />}
+          primaryAction={<ConnectCTA />}
           secondaryAction={
             <Link href="#docs" className="btn-ghost text-sm font-medium">
               Docs

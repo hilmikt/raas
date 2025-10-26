@@ -1,31 +1,21 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
+import { useAccount, useDisconnect, useEnsName } from 'wagmi';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { motion } from 'framer-motion';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Copy, LogOut, Wallet } from 'lucide-react';
-import { useAccount, useConnect, useDisconnect, useEnsName } from 'wagmi';
 import { truncateAddress } from '@/lib/format';
 
-export function ConnectButton() {
+export function ConnectCTA() {
   const { address, status } = useAccount();
-  const { connectAsync, connectors, isPending, reset } = useConnect();
   const { disconnectAsync } = useDisconnect();
   const { data: ensName } = useEnsName({ address, chainId: undefined, query: { enabled: Boolean(address) } });
+  const { openConnectModal } = useConnectModal();
   const [copied, setCopied] = useState(false);
 
-  const injectedConnector = connectors.find((connector) => connector.id === 'injected');
-  const canConnect = Boolean(injectedConnector);
-
-  const handleConnect = useCallback(async () => {
-    if (!injectedConnector) return;
-    try {
-      await connectAsync({ connector: injectedConnector });
-    } catch (error) {
-      reset();
-      console.error('Wallet connection failed', error);
-    }
-  }, [connectAsync, injectedConnector, reset]);
+  const isConnected = status === 'connected' || status === 'reconnecting';
 
   const handleCopy = useCallback(async () => {
     if (!address) return;
@@ -39,25 +29,27 @@ export function ConnectButton() {
   }, [address]);
 
   const handleDisconnect = useCallback(async () => {
-    await disconnectAsync();
+    try {
+      await disconnectAsync();
+    } catch (error) {
+      console.error('Failed to disconnect wallet', error);
+    }
   }, [disconnectAsync]);
-
-  const isConnected = status === 'connected' || status === 'reconnecting';
 
   if (!isConnected) {
     return (
       <motion.button
         type="button"
-        onClick={handleConnect}
-        disabled={isPending || !canConnect}
-        className="btn-primary min-w-[11rem] justify-center gap-2 rounded-2xl shadow-surface hover:shadow-surface-hover disabled:cursor-not-allowed"
+        onClick={() => openConnectModal?.()}
+        disabled={!openConnectModal}
+        className="btn-primary min-w-[11rem] justify-center gap-2 rounded-2xl shadow-surface hover:shadow-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
         aria-label="Connect wallet"
-        whileHover={{ y: -1 }}
-        whileTap={{ scale: 0.97 }}
+        whileHover={{ y: openConnectModal ? -1 : 0 }}
+        whileTap={{ scale: openConnectModal ? 0.97 : 1 }}
       >
         <Wallet className="h-4 w-4" aria-hidden="true" />
         <span className="font-medium">
-          {isPending ? 'Connecting...' : canConnect ? 'Connect Wallet' : 'Install a wallet'}
+          {openConnectModal ? 'Connect Wallet' : 'Wallets unavailable'}
         </span>
       </motion.button>
     );
@@ -91,7 +83,7 @@ export function ConnectButton() {
             className="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm text-foreground outline-none transition hover:bg-primary/10 focus:bg-primary/10 focus-visible:ring-0"
             onSelect={(event) => {
               event.preventDefault();
-              handleCopy();
+              void handleCopy();
             }}
           >
             <Copy className="h-4 w-4" aria-hidden="true" />
@@ -116,3 +108,4 @@ export function ConnectButton() {
     </>
   );
 }
+

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
-import { ConnectButton } from '@/components/wallet/ConnectButton';
+import { ConnectCTA } from '@/components/wallet/ConnectCTA';
 
 type SiteHeaderProps = {
   showConnect?: boolean;
@@ -27,7 +27,7 @@ export function SiteHeader({ showConnect = true }: SiteHeaderProps) {
         <ThemeToggle />
         {showConnect ? (
           <div className="flex min-w-[3rem] items-center justify-center">
-            <ConnectButton />
+            <ConnectCTA />
           </div>
         ) : null}
       </div>

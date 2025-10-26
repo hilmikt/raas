@@ -32,6 +32,18 @@ contract Escrow is AccessControl, ReentrancyGuard, Pausable {
         bool    canceled;
     }
 
+    struct MilestoneView {
+        uint256 id;
+        address client;
+        address worker;
+        uint256 amount;
+        bytes32 ref;
+        Rail rail;
+        bool funded;
+        bool released;
+        bool canceled;
+    }
+
     uint256 public nextId;
     mapping(uint256 => Milestone) public milestones;
 
@@ -141,6 +153,50 @@ contract Escrow is AccessControl, ReentrancyGuard, Pausable {
 
         m.canceled = true;
         emit Canceled(id);
+    }
+
+    /// @notice Returns all non-closed milestones created by `owner`.
+    function getOpenEscrows(address owner) public view returns (MilestoneView[] memory) {
+        uint256 total = nextId;
+        uint256 count;
+        for (uint256 i = 1; i <= total; i++) {
+            Milestone storage m = milestones[i];
+            if (m.client == address(0) || m.client != owner || m.canceled || m.released) {
+                continue;
+            }
+            count++;
+        }
+
+        MilestoneView[] memory result = new MilestoneView[](count);
+        if (count == 0) {
+            return result;
+        }
+
+        uint256 index;
+        for (uint256 i = 1; i <= total; i++) {
+            Milestone storage m = milestones[i];
+            if (m.client == address(0) || m.client != owner || m.canceled || m.released) {
+                continue;
+            }
+            result[index] = MilestoneView({
+                id: i,
+                client: m.client,
+                worker: m.worker,
+                amount: m.amount,
+                ref: m.ref,
+                rail: m.rail,
+                funded: m.funded,
+                released: m.released,
+                canceled: m.canceled
+            });
+            index++;
+        }
+        return result;
+    }
+
+    /// @notice Convenience helper that scopes to msg.sender.
+    function getMyOpenEscrows() external view returns (MilestoneView[] memory) {
+        return getOpenEscrows(msg.sender);
     }
 
     // Admin controls

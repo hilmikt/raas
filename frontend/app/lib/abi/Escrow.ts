@@ -36,6 +36,54 @@ const EscrowAbi = [
     stateMutability: "nonpayable",
   },
   {
+    type: "function",
+    name: "getOpenEscrows",
+    inputs: [{ name: "owner", type: "address", internalType: "address" }],
+    outputs: [
+      {
+        name: "escrows",
+        type: "tuple[]",
+        internalType: "struct Escrow.MilestoneView[]",
+        components: [
+          { name: "id", type: "uint256", internalType: "uint256" },
+          { name: "client", type: "address", internalType: "address" },
+          { name: "worker", type: "address", internalType: "address" },
+          { name: "amount", type: "uint256", internalType: "uint256" },
+          { name: "ref", type: "bytes32", internalType: "bytes32" },
+          { name: "rail", type: "uint8", internalType: "enum Escrow.Rail" },
+          { name: "funded", type: "bool", internalType: "bool" },
+          { name: "released", type: "bool", internalType: "bool" },
+          { name: "canceled", type: "bool", internalType: "bool" },
+        ],
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getMyOpenEscrows",
+    inputs: [],
+    outputs: [
+      {
+        name: "escrows",
+        type: "tuple[]",
+        internalType: "struct Escrow.MilestoneView[]",
+        components: [
+          { name: "id", type: "uint256", internalType: "uint256" },
+          { name: "client", type: "address", internalType: "address" },
+          { name: "worker", type: "address", internalType: "address" },
+          { name: "amount", type: "uint256", internalType: "uint256" },
+          { name: "ref", type: "bytes32", internalType: "bytes32" },
+          { name: "rail", type: "uint8", internalType: "enum Escrow.Rail" },
+          { name: "funded", type: "bool", internalType: "bool" },
+          { name: "released", type: "bool", internalType: "bool" },
+          { name: "canceled", type: "bool", internalType: "bool" },
+        ],
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
     type: "event",
     name: "MilestoneCreated",
     inputs: [
@@ -70,6 +118,28 @@ const EscrowAbi = [
     type: "event",
     name: "Canceled",
     inputs: [{ name: "id", type: "uint256", indexed: true, internalType: "uint256" }],
+  },
+  {
+    type: "event",
+    name: "EscrowCreated",
+    inputs: [
+      { name: "id", type: "uint256", indexed: true, internalType: "uint256" },
+      { name: "client", type: "address", indexed: true, internalType: "address" },
+      { name: "worker", type: "address", indexed: true, internalType: "address" },
+      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" },
+      { name: "ref", type: "bytes32", indexed: false, internalType: "bytes32" },
+      { name: "rail", type: "uint8", indexed: false, internalType: "enum Escrow.Rail" },
+    ],
+  },
+  {
+    type: "event",
+    name: "EscrowClosed",
+    inputs: [
+      { name: "id", type: "uint256", indexed: true, internalType: "uint256" },
+      { name: "client", type: "address", indexed: true, internalType: "address" },
+      { name: "worker", type: "address", indexed: true, internalType: "address" },
+      { name: "reason", type: "uint8", indexed: false, internalType: "uint8" },
+    ],
   },
 ] as const;
 

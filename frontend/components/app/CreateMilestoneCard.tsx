@@ -1,14 +1,21 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useAccount, useWaitForTransactionReceipt } from "wagmi";
-import { useQuery } from "@tanstack/react-query";
+import { useCallback, useMemo, useState } from "react";
+import { useAccount } from "wagmi";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { parseUnits, type Address, type Hash } from "viem";
 import { z } from "zod";
-import { createMilestone, encodeRef, getPyusdDecimals } from "@/app/lib/contracts";
+import { waitForTransactionReceipt } from "wagmi/actions";
+import {
+  createMilestone,
+  encodeRef,
+  getPyusdDecimals,
+} from "@/app/lib/contracts";
 import { notify } from "@/components/ui/AppToaster";
 import { shortHash } from "@/app/lib/format";
 import { env } from "@/lib/env";
+import { wagmiConfig } from "@/providers/Web3Provider";
+import { openEscrowsQueryKey } from "@/src/queries/escrows";
 
 type RailOption = "PYUSD" | "KIRAPAY";
 
@@ -41,7 +48,8 @@ const initialForm = {
 const blockscoutBase = env?.NEXT_PUBLIC_BLOCKSCOUT_BASE;
 
 export function CreateMilestoneCard({ onCreated }: Props) {
-  const { address } = useAccount();
+  const { address, chainId } = useAccount();
+  const queryClient = useQueryClient();
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setSubmitting] = useState(false);
@@ -55,57 +63,6 @@ export function CreateMilestoneCard({ onCreated }: Props) {
   });
 
   const decimals = useMemo(() => decimalsQuery.data ?? 6, [decimalsQuery.data]);
-
-  const receipt = useWaitForTransactionReceipt({
-    hash: pendingHash,
-    query: {
-      enabled: Boolean(pendingHash),
-      refetchInterval: pendingHash ? 2000 : false,
-    },
-  });
-
-  useEffect(() => {
-    if (!pendingHash) return;
-    if (receipt.isLoading) {
-      notify("Transaction pending...", {
-        description: shortHash(pendingHash),
-      });
-    }
-  }, [pendingHash, receipt.isLoading]);
-
-  useEffect(() => {
-    if (!receipt.data || !pendingHash) return;
-    if (receipt.data.status === "success") {
-      notify("Milestone created", {
-        description: shortHash(pendingHash),
-        action: blockscoutBase
-          ? {
-              label: "Explorer",
-              onClick: () => window.open(`${blockscoutBase}/tx/${pendingHash}`, "_blank"),
-            }
-          : undefined,
-      });
-      setLastHash(pendingHash);
-      setForm(initialForm);
-      setErrors({});
-      onCreated?.();
-    } else {
-      notify("Milestone failed", {
-        description: receipt.data.status ?? "Transaction reverted",
-      });
-    }
-    setSubmitting(false);
-    setPendingHash(undefined);
-  }, [blockscoutBase, onCreated, pendingHash, receipt.data]);
-
-  useEffect(() => {
-    if (!receipt.error) return;
-    notify("Transaction error", {
-      description: receipt.error instanceof Error ? receipt.error.message : "Transaction failed",
-    });
-    setSubmitting(false);
-    setPendingHash(undefined);
-  }, [receipt.error]);
 
   const onChange = useCallback((key: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -145,15 +102,42 @@ export function CreateMilestoneCard({ onCreated }: Props) {
         notify("Opening wallet...", { description: "Confirm milestone creation" });
         const hash = await createMilestone(worker, amount, reference, railValue);
         setPendingHash(hash);
+        notify("Transaction pending...", {
+          description: shortHash(hash),
+        });
+        const receipt = await waitForTransactionReceipt(wagmiConfig, { hash });
+        if (receipt.status === "success") {
+          setLastHash(hash);
+          setForm(initialForm);
+          setErrors({});
+          const queryKey = openEscrowsQueryKey(address ?? null, chainId ?? null);
+          await queryClient.refetchQueries({ queryKey, type: "active" });
+          onCreated?.();
+          notify("Milestone created", {
+            description: shortHash(hash),
+            action: blockscoutBase
+              ? {
+                  label: "Explorer",
+                  onClick: () => window.open(`${blockscoutBase}/tx/${hash}`, "_blank"),
+                }
+              : undefined,
+          });
+        } else {
+          notify("Milestone failed", {
+            description: receipt.status ?? "Transaction reverted",
+          });
+        }
       } catch (error) {
         console.error(error);
         notify("Milestone failed", {
           description: error instanceof Error ? error.message : "Unexpected error occurred",
         });
+      } finally {
         setSubmitting(false);
+        setPendingHash(undefined);
       }
     },
-    [address, decimals, form],
+    [address, chainId, decimals, form, onCreated, queryClient],
   );
 
   return (
