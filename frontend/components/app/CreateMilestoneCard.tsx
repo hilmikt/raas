@@ -38,7 +38,7 @@ const initialForm = {
   rail: "PYUSD" as RailOption,
 };
 
-const blockscoutBase = env.NEXT_PUBLIC_BLOCKSCOUT_BASE;
+const blockscoutBase = env?.NEXT_PUBLIC_BLOCKSCOUT_BASE;
 
 export function CreateMilestoneCard({ onCreated }: Props) {
   const { address } = useAccount();

@@ -11,8 +11,14 @@ export function NetworkBanner() {
   const { switchChain, switchChainAsync, chains } = useSwitchChain();
   const [isSwitching, setSwitching] = useState(false);
 
+  const targetChainId = CHAIN_ID;
+
+  if (targetChainId === null) {
+    return null;
+  }
+
   const isConnected = status === "connected" || status === "reconnecting";
-  const onTargetNetwork = isConnected && chainId === CHAIN_ID;
+  const onTargetNetwork = isConnected && chainId === targetChainId;
 
   const currentNetwork = useMemo(() => {
     if (!isConnected) return "Unknown";
@@ -21,9 +27,9 @@ export function NetworkBanner() {
   }, [chains, chainId, isConnected]);
 
   const targetNetwork = useMemo(() => {
-    const match = chains.find((chain) => chain.id === CHAIN_ID);
-    return match?.name ?? `Chain ${CHAIN_ID}`;
-  }, [chains]);
+    const match = chains.find((chain) => chain.id === targetChainId);
+    return match?.name ?? `Chain ${targetChainId}`;
+  }, [chains, targetChainId]);
 
   if (!isConnected || onTargetNetwork) {
     return null;
@@ -33,9 +39,9 @@ export function NetworkBanner() {
     setSwitching(true);
     try {
       if (switchChainAsync) {
-        await switchChainAsync({ chainId: CHAIN_ID });
+        await switchChainAsync({ chainId: targetChainId });
       } else {
-        switchChain({ chainId: CHAIN_ID });
+        switchChain({ chainId: targetChainId });
       }
     } catch (error) {
       console.error(error);
@@ -51,7 +57,7 @@ export function NetworkBanner() {
     <div className="w-full rounded-2xl border border-destructive/60 bg-destructive/10 px-4 py-3 text-sm text-destructive shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span>
-          Connected to {currentNetwork}. Switch to {targetNetwork} (chain id {CHAIN_ID}) for escrow actions.
+          Connected to {currentNetwork}. Switch to {targetNetwork} (chain id {targetChainId}) for escrow actions.
         </span>
         <button
           type="button"

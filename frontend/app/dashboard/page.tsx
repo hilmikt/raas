@@ -7,15 +7,9 @@ import { CreateMilestoneCard } from "@/components/app/CreateMilestoneCard";
 import { MilestoneRow } from "@/components/app/MilestoneRow";
 import { ReputationBadge } from "@/components/app/ReputationBadge";
 import { NetworkBanner } from "@/components/app/NetworkBanner";
-import type { Milestone } from "@/app/lib/milestones";
-
-async function fetchMilestones(): Promise<Milestone[]> {
-  const res = await fetch("/api/milestones", { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`Failed to load milestones (${res.status})`);
-  }
-  return res.json();
-}
+import { fetchMilestones } from "@/app/lib/api";
+import { RecentEvents } from "@/components/app/RecentEvents";
+import { Attestations } from "@/components/app/Attestations";
 
 export default function DashboardPage() {
   const queryClient = useQueryClient();
@@ -27,9 +21,14 @@ export default function DashboardPage() {
     void queryClient.invalidateQueries({ queryKey: ["milestones"] });
   }, [queryClient]);
 
+  const refreshAttestations = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ["attestations"] });
+  }, [queryClient]);
+
   const bumpReputation = useCallback(() => {
     setReputationTick((tick) => tick + 1);
-  }, []);
+    refreshAttestations();
+  }, [refreshAttestations]);
 
   const handleCreateCompleted = useCallback(() => {
     refreshMilestones();
@@ -38,13 +37,14 @@ export default function DashboardPage() {
   const milestonesQuery = useQuery({
     queryKey: ["milestones"],
     queryFn: fetchMilestones,
-    refetchInterval: 15_000,
+    refetchInterval: 5_000,
   });
 
   const workers = useMemo(() => {
-    if (!milestonesQuery.data) return [];
+    const data = milestonesQuery.data?.milestones;
+    if (!data) return [];
     const seen = new Set<string>();
-    milestonesQuery.data.forEach((item) => {
+    data.forEach((item) => {
       if (item.worker) seen.add(item.worker.toLowerCase());
     });
     return Array.from(seen);
@@ -93,13 +93,13 @@ export default function DashboardPage() {
             {(milestonesQuery.error as Error).message}
           </p>
         )}
-        {milestonesQuery.data && milestonesQuery.data.length === 0 && (
+        {milestonesQuery.data && milestonesQuery.data.milestones.length === 0 && (
           <p className="rounded-3xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
             No milestones yet -- create one above to get started.
           </p>
         )}
         <div className="space-y-4">
-          {milestonesQuery.data?.map((item) => (
+          {milestonesQuery.data?.milestones.map((item) => (
             <MilestoneRow
               key={item.id}
               milestone={item}
@@ -107,6 +107,27 @@ export default function DashboardPage() {
               onReputationRefresh={bumpReputation}
             />
           ))}
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm backdrop-blur">
+          <header className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="font-heading text-lg font-semibold text-foreground">
+              Recent Events
+            </h2>
+            <span className="text-xs text-muted-foreground">Live every 5s</span>
+          </header>
+          <RecentEvents />
+        </div>
+        <div className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm backdrop-blur">
+          <header className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="font-heading text-lg font-semibold text-foreground">
+              Attestations
+            </h2>
+            <span className="text-xs text-muted-foreground">Latest 12 proofs</span>
+          </header>
+          <Attestations />
         </div>
       </section>
     </div>

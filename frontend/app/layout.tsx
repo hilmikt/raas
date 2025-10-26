@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/providers/ThemeProvider';
 import { AppFrame } from '@/components/layout/AppFrame';
 import { AppToaster } from '@/components/ui/AppToaster';
 import Web3Provider from '@/providers/Web3Provider';
+import { EnvironmentGate } from '@/components/app/EnvironmentGate';
 
 export const metadata: Metadata = {
   title: 'RAAS Demo',
@@ -39,7 +40,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <body>
         <Web3Provider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-            <AppFrame>{children}</AppFrame>
+            <EnvironmentGate>
+              <AppFrame>{children}</AppFrame>
+            </EnvironmentGate>
             <AppToaster />
           </ThemeProvider>
         </Web3Provider>

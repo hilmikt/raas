@@ -1,11 +1,14 @@
 'use client';
 
+import Link from 'next/link';
 import { Boxes, FileCheck2, ScrollText } from 'lucide-react';
 import { useAccount, useEnsName, useSwitchChain } from 'wagmi';
 import { DashboardCard } from '@/components/app/DashboardCard';
 import { NetworkBanner } from '@/components/app/NetworkBanner';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { truncateAddress } from '@/lib/format';
+import { RecentEvents } from '@/components/app/RecentEvents';
+import { Attestations } from '@/components/app/Attestations';
 
 const cardIllustrationClasses =
   'mx-auto h-20 w-20 text-primary/70 transition group-hover:text-primary';
@@ -53,9 +56,9 @@ export function DashboardShell() {
             description="Track contributors, milestones, and multi-rail payouts in one place."
             icon={<Boxes className="h-5 w-5" aria-hidden="true" />}
             action={
-              <button type="button" className="btn-ghost px-4 py-2 text-sm">
+              <Link href="/dashboard" className="btn-ghost px-4 py-2 text-sm">
                 Start an escrow
-              </button>
+              </Link>
             }
           >
             <div className="group relative flex flex-1 flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border/70 bg-background/50 p-6 text-center">
@@ -83,29 +86,7 @@ export function DashboardShell() {
               </div>
             }
           >
-            <div className="group relative flex flex-1 flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border/70 bg-background/50 p-6 text-center">
-              <svg viewBox="0 0 120 120" className={cardIllustrationClasses} role="img" aria-hidden="true">
-                <circle cx="60" cy="40" r="18" fill="currentColor" opacity="0.22" />
-                <path
-                  d="M36 86c0-13.8 10.2-25 24-25s24 11.2 24 25"
-                  stroke="currentColor"
-                  strokeWidth="8"
-                  strokeLinecap="round"
-                  strokeOpacity="0.18"
-                />
-                <path
-                  d="M47 42l8 8 18-18"
-                  stroke="currentColor"
-                  strokeWidth="6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  opacity="0.8"
-                />
-              </svg>
-              <p className="text-sm text-muted-foreground">
-                Once escrows close, we stream verifiable attestations so crews can prove reputation anywhere.
-              </p>
-            </div>
+            <Attestations />
           </DashboardCard>
           <DashboardCard
             title="Recent Events"
@@ -113,38 +94,7 @@ export function DashboardShell() {
             icon={<ScrollText className="h-5 w-5" aria-hidden="true" />}
             className="lg:col-span-2"
           >
-            <div className="group relative flex flex-1 flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border/70 bg-background/50 p-6 text-center lg:col-span-2">
-              <svg viewBox="0 0 120 120" className={cardIllustrationClasses} role="img" aria-hidden="true">
-                <path
-                  d="M24 40h72"
-                  stroke="currentColor"
-                  strokeWidth="10"
-                  strokeLinecap="round"
-                  strokeOpacity="0.2"
-                />
-                <path
-                  d="M24 60h52"
-                  stroke="currentColor"
-                  strokeWidth="10"
-                  strokeLinecap="round"
-                  strokeOpacity="0.2"
-                />
-                <circle cx="88" cy="60" r="6" fill="currentColor" opacity="0.6" />
-                <path
-                  d="M24 80h40"
-                  stroke="currentColor"
-                  strokeWidth="10"
-                  strokeLinecap="round"
-                  strokeOpacity="0.2"
-                />
-              </svg>
-              <p className="text-sm text-muted-foreground">
-                Escrow events, payouts, and verification pings will land here as soon as your first job goes live.
-              </p>
-              <button type="button" className="btn-ghost text-sm">
-                Invite a contributor
-              </button>
-            </div>
+            <RecentEvents />
           </DashboardCard>
         </section>
       </div>

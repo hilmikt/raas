@@ -8,7 +8,8 @@
   },
   "scripts": {
     "dev": "pnpm --filter ./frontend... dev",
-    "build": "pnpm --filter ./frontend... build",
+    "build": "pnpm -C frontend build",
+    "vercel-build": "pnpm -C frontend build",
     "start": "pnpm --filter ./frontend... start",
     "lint": "pnpm --filter ./frontend... lint",
     "compile": "hardhat compile",

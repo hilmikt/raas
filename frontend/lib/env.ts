@@ -3,11 +3,12 @@ import type { Address } from "viem";
 
 const addressSchema = z
   .string()
+  .trim()
   .regex(/^0x[a-fA-F0-9]{40}$/, "must be a valid 0x-prefixed address")
   .transform((value) => value as Address);
 
 const optionalUrlSchema = z
-  .union([z.string().url(), z.literal(""), z.undefined()])
+  .union([z.string().trim().url(), z.literal(""), z.undefined()])
   .transform((value) => {
     if (!value) {
       return undefined;
@@ -28,6 +29,19 @@ const envSchema = z.object({
   SEPOLIA_RPC: optionalUrlSchema,
 });
 
+type NormalizedEnv = {
+  NEXT_PUBLIC_CHAIN_ID: string;
+  CHAIN_ID: number;
+  NEXT_PUBLIC_ESCROW: Address;
+  NEXT_PUBLIC_REPUTATION: Address;
+  NEXT_PUBLIC_PYUSD: Address;
+  NEXT_PUBLIC_PYUSD_HANDLER: Address;
+  NEXT_PUBLIC_KIRAPAY_ADAPTER: Address;
+  NEXT_PUBLIC_BLOCKSCOUT_BASE?: string;
+  NEXT_PUBLIC_RPC_URL?: string;
+  SEPOLIA_RPC?: string;
+};
+
 const parsed = envSchema.safeParse({
   NEXT_PUBLIC_CHAIN_ID: process.env.NEXT_PUBLIC_CHAIN_ID,
   NEXT_PUBLIC_ESCROW: process.env.NEXT_PUBLIC_ESCROW,
@@ -40,31 +54,49 @@ const parsed = envSchema.safeParse({
   SEPOLIA_RPC: process.env.SEPOLIA_RPC,
 });
 
+let normalizedEnv: NormalizedEnv | null = null;
+let envError: string | null = null;
+
 if (!parsed.success) {
-  const issues = parsed.error.issues.map((issue) => {
-    const path = issue.path.join(".") || "unknown";
-    return `${path}: ${issue.message}`;
-  });
-  throw new Error(`Invalid environment variables:\n${issues.join("\n")}`);
+  envError = parsed.error.issues
+    .map((issue) => {
+      const path = issue.path.join(".") || "unknown";
+      return `${path}: ${issue.message}`;
+    })
+    .join("; ");
+} else {
+  const chainIdRaw = parsed.data.NEXT_PUBLIC_CHAIN_ID.trim();
+  const chainId = Number(chainIdRaw);
+  if (!Number.isInteger(chainId) || chainId <= 0) {
+    envError = "NEXT_PUBLIC_CHAIN_ID must be a positive integer";
+  } else {
+    normalizedEnv = {
+      NEXT_PUBLIC_CHAIN_ID: chainIdRaw,
+      CHAIN_ID: chainId,
+      NEXT_PUBLIC_ESCROW: parsed.data.NEXT_PUBLIC_ESCROW,
+      NEXT_PUBLIC_REPUTATION: parsed.data.NEXT_PUBLIC_REPUTATION,
+      NEXT_PUBLIC_PYUSD: parsed.data.NEXT_PUBLIC_PYUSD,
+      NEXT_PUBLIC_PYUSD_HANDLER: parsed.data.NEXT_PUBLIC_PYUSD_HANDLER,
+      NEXT_PUBLIC_KIRAPAY_ADAPTER: parsed.data.NEXT_PUBLIC_KIRAPAY_ADAPTER,
+      NEXT_PUBLIC_BLOCKSCOUT_BASE: parsed.data.NEXT_PUBLIC_BLOCKSCOUT_BASE,
+      NEXT_PUBLIC_RPC_URL: parsed.data.NEXT_PUBLIC_RPC_URL,
+      SEPOLIA_RPC: parsed.data.SEPOLIA_RPC,
+    };
+  }
 }
 
-const chainIdRaw = parsed.data.NEXT_PUBLIC_CHAIN_ID.trim();
-const chainId = Number(chainIdRaw);
-if (!Number.isInteger(chainId) || chainId <= 0) {
-  throw new Error("NEXT_PUBLIC_CHAIN_ID must be a positive integer");
+if (envError) {
+  console.error(`[env] ${envError}`);
 }
 
-export const env = {
-  NEXT_PUBLIC_CHAIN_ID: chainIdRaw,
-  CHAIN_ID: chainId,
-  NEXT_PUBLIC_ESCROW: parsed.data.NEXT_PUBLIC_ESCROW,
-  NEXT_PUBLIC_REPUTATION: parsed.data.NEXT_PUBLIC_REPUTATION,
-  NEXT_PUBLIC_PYUSD: parsed.data.NEXT_PUBLIC_PYUSD,
-  NEXT_PUBLIC_PYUSD_HANDLER: parsed.data.NEXT_PUBLIC_PYUSD_HANDLER,
-  NEXT_PUBLIC_KIRAPAY_ADAPTER: parsed.data.NEXT_PUBLIC_KIRAPAY_ADAPTER,
-  NEXT_PUBLIC_BLOCKSCOUT_BASE: parsed.data.NEXT_PUBLIC_BLOCKSCOUT_BASE,
-  NEXT_PUBLIC_RPC_URL: parsed.data.NEXT_PUBLIC_RPC_URL,
-  SEPOLIA_RPC: parsed.data.SEPOLIA_RPC,
-};
+export const env = normalizedEnv;
+export const envValidationError = envError;
 
-export type AppEnv = typeof env;
+export type AppEnv = NonNullable<typeof env>;
+
+export function requireEnv(): AppEnv {
+  if (!normalizedEnv) {
+    throw new Error(envError ?? "Environment variables are not configured.");
+  }
+  return normalizedEnv;
+}

@@ -6,17 +6,23 @@ import EscrowAbi from "@/app/lib/abi/Escrow";
 import ERC20Abi from "@/app/lib/abi/ERC20";
 import ReputationAbi from "@/app/lib/abi/Reputation";
 import { wagmiConfig } from "@/providers/Web3Provider";
-import { current } from "@/app/config/addresses";
+import { getAddressBook, CHAIN_ID, type AddressBook } from "@/app/config/addresses";
 import type { Milestone } from "@/app/lib/milestones";
-import { env } from "@/lib/env";
 
-const addresses = current();
-const TARGET_CHAIN_ID = env.CHAIN_ID;
+function ensureAddressBook(): AddressBook {
+  const book = getAddressBook();
+  if (!book) {
+    throw new Error("Environment variables are missing contract addresses.");
+  }
+  return book;
+}
 
 function ensureChain(chainId?: number) {
-  if (!TARGET_CHAIN_ID) return;
-  if (chainId !== undefined && chainId !== TARGET_CHAIN_ID) {
-    throw new Error(`Please switch to chain ${TARGET_CHAIN_ID}`);
+  if (!CHAIN_ID) {
+    throw new Error("NEXT_PUBLIC_CHAIN_ID is not configured.");
+  }
+  if (chainId !== undefined && chainId !== CHAIN_ID) {
+    throw new Error(`Please switch to chain ${CHAIN_ID}`);
   }
 }
 
@@ -38,6 +44,7 @@ export function encodeExtra(extra: string): Hex {
 }
 
 export async function createMilestone(worker: Address, amount: bigint, ref: Hex, rail: number): Promise<Hash> {
+  const addresses = ensureAddressBook();
   const account = await requireAccount();
   return writeContract(wagmiConfig, {
     account,
@@ -49,6 +56,7 @@ export async function createMilestone(worker: Address, amount: bigint, ref: Hex,
 }
 
 export async function ensureAllowance(required: bigint): Promise<Hash | undefined> {
+  const addresses = ensureAddressBook();
   const account = await requireAccount();
   const allowance = await readContract(wagmiConfig, {
     address: addresses.PYUSD,
@@ -77,6 +85,7 @@ export async function fund(id: bigint, amount: bigint): Promise<{
   approvalHash?: Hash;
   fundHash: Hash;
 }> {
+  const addresses = ensureAddressBook();
   const approvalHash = await ensureAllowance(amount);
   const account = await requireAccount();
   const fundHash = await writeContract(wagmiConfig, {
@@ -90,6 +99,7 @@ export async function fund(id: bigint, amount: bigint): Promise<{
 }
 
 export async function release(id: bigint, extra: Hex = "0x"): Promise<Hash> {
+  const addresses = ensureAddressBook();
   const account = await requireAccount();
   return writeContract(wagmiConfig, {
     account,
@@ -114,6 +124,7 @@ export async function getMilestonesFor(address?: Address): Promise<Milestone[]> 
 }
 
 export async function getReputation(address: Address): Promise<bigint> {
+  const addresses = ensureAddressBook();
   const score = await readContract(wagmiConfig, {
     address: addresses.REPUTATION,
     abi: ReputationAbi,
@@ -124,6 +135,7 @@ export async function getReputation(address: Address): Promise<bigint> {
 }
 
 export async function getPyusdDecimals(): Promise<number> {
+  const addresses = ensureAddressBook();
   const value = await readContract(wagmiConfig, {
     address: addresses.PYUSD,
     abi: ERC20Abi,

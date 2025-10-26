@@ -10,7 +10,7 @@ import type { Milestone } from "@/app/lib/milestones";
 import { notify } from "@/components/ui/AppToaster";
 import { env } from "@/lib/env";
 
-const blockscoutBase = env.NEXT_PUBLIC_BLOCKSCOUT_BASE;
+const blockscoutBase = env?.NEXT_PUBLIC_BLOCKSCOUT_BASE;
 
 type Props = {
   milestone: Milestone;

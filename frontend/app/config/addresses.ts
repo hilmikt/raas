@@ -1,5 +1,5 @@
 import { type Address } from "viem";
-import { env } from "@/lib/env";
+import { env, requireEnv, type AppEnv } from "@/lib/env";
 
 export type AddressBook = {
   ESCROW: Address;
@@ -9,23 +9,35 @@ export type AddressBook = {
   KIRAPAY_ADAPTER: Address;
 };
 
-function buildAddressBook(): AddressBook {
+function buildAddressBook(source: AppEnv): AddressBook {
   return {
-    ESCROW: env.NEXT_PUBLIC_ESCROW,
-    REPUTATION: env.NEXT_PUBLIC_REPUTATION,
-    PYUSD: env.NEXT_PUBLIC_PYUSD,
-    PYUSD_HANDLER: env.NEXT_PUBLIC_PYUSD_HANDLER,
-    KIRAPAY_ADAPTER: env.NEXT_PUBLIC_KIRAPAY_ADAPTER,
+    ESCROW: source.NEXT_PUBLIC_ESCROW,
+    REPUTATION: source.NEXT_PUBLIC_REPUTATION,
+    PYUSD: source.NEXT_PUBLIC_PYUSD,
+    PYUSD_HANDLER: source.NEXT_PUBLIC_PYUSD_HANDLER,
+    KIRAPAY_ADAPTER: source.NEXT_PUBLIC_KIRAPAY_ADAPTER,
   };
 }
 
-let cached: AddressBook | null = null;
+let cached: AddressBook | null | undefined;
 
-export function current(): AddressBook {
-  if (!cached) {
-    cached = buildAddressBook();
+export function getAddressBook(): AddressBook | null {
+  if (cached !== undefined) {
+    return cached;
   }
+  cached = env ? buildAddressBook(env) : null;
   return cached;
 }
 
-export const CHAIN_ID = env.CHAIN_ID;
+export function current(): AddressBook {
+  const loaded = requireEnv();
+  const book = buildAddressBook(loaded);
+  cached = book;
+  return book;
+}
+
+export const CHAIN_ID = env?.CHAIN_ID ?? null;
+
+export function requireChainId(): number {
+  return requireEnv().CHAIN_ID;
+}

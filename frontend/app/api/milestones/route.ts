@@ -1,14 +1,20 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
   createPublicClient,
-  http,
   hexToString,
+  http,
   parseAbiItem,
   type Hex,
 } from "viem";
 import { sepolia } from "viem/chains";
-import { current } from "@/app/config/addresses";
-import type { Milestone, RailKind } from "@/app/lib/milestones";
+import { getAddressBook } from "@/app/config/addresses";
+import type {
+  Milestone,
+  MilestoneEvent,
+  MilestoneEventKind,
+  MilestonesResponse,
+  RailKind,
+} from "@/app/lib/milestones";
 import { env } from "@/lib/env";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
@@ -24,6 +30,13 @@ const ESCROW_EVENTS = {
     "event Released(uint256 indexed id, address indexed to, uint256 amount, uint8 rail)",
   ),
   canceled: parseAbiItem("event Canceled(uint256 indexed id)"),
+} as const;
+
+const EVENT_KIND_BY_NAME: Record<string, MilestoneEventKind> = {
+  MilestoneCreated: "CREATED",
+  Funded: "FUNDED",
+  Released: "RELEASED",
+  Canceled: "CANCELED",
 };
 
 const RAIL_SETTLED = parseAbiItem(
@@ -33,7 +46,14 @@ const RAIL_SETTLED = parseAbiItem(
 type MutableMilestone = {
   base: Pick<
     Milestone,
-    "id" | "client" | "worker" | "amount" | "rail" | "reference" | "referenceHex" | "createdBlock"
+    | "id"
+    | "client"
+    | "worker"
+    | "amount"
+    | "rail"
+    | "reference"
+    | "referenceHex"
+    | "createdBlock"
   >;
   events: {
     funded: boolean;
@@ -41,6 +61,7 @@ type MutableMilestone = {
     canceled: boolean;
     extra?: string;
     lastEventBlock: bigint;
+    history: MilestoneEvent[];
   };
 };
 
@@ -71,10 +92,14 @@ function toHexValue(value: unknown): Hex {
   return (typeof value === "string" ? (value as Hex) : "0x") as Hex;
 }
 
+function makeEventId(id: number, type: MilestoneEventKind, txHash: Hex | null | undefined) {
+  return `${id}-${type}-${txHash ?? "0x"}` as const;
+}
+
 function publicClient() {
   const rpc =
-    env.SEPOLIA_RPC ||
-    env.NEXT_PUBLIC_RPC_URL ||
+    env?.SEPOLIA_RPC ||
+    env?.NEXT_PUBLIC_RPC_URL ||
     sepolia.rpcUrls.default.http[0];
   return createPublicClient({
     chain: sepolia,
@@ -88,8 +113,15 @@ export async function GET(request: NextRequest) {
   const toParam = url.searchParams.get("toBlock");
   const filterAddress = url.searchParams.get("address")?.toLowerCase();
 
+  const addressBook = getAddressBook();
+  if (!addressBook) {
+    return NextResponse.json(
+      { error: "Contract addresses are not configured." },
+      { status: 500 },
+    );
+  }
+
   const client = publicClient();
-  const addresses = current();
 
   const latestBlock = await client.getBlockNumber();
   const defaultWindow = 200_000n;
@@ -101,14 +133,14 @@ export async function GET(request: NextRequest) {
   const toBlock = toParam ? BigInt(toParam) : latestBlock;
 
   const baseLogs = await client.getLogs({
-    address: addresses.ESCROW,
+    address: addressBook.ESCROW,
     events: Object.values(ESCROW_EVENTS),
     fromBlock,
     toBlock,
   });
 
   const railLogs = await Promise.all(
-    [addresses.PYUSD_HANDLER, addresses.KIRAPAY_ADAPTER].map((railAddress) =>
+    [addressBook.PYUSD_HANDLER, addressBook.KIRAPAY_ADAPTER].map((railAddress) =>
       client.getLogs({
         address: railAddress,
         event: RAIL_SETTLED,
@@ -119,8 +151,13 @@ export async function GET(request: NextRequest) {
   );
 
   const merged = new Map<number, MutableMilestone>();
+  const allEvents: MilestoneEvent[] = [];
 
   for (const log of baseLogs) {
+    const blockNumber = log.blockNumber ?? 0n;
+    const txHash = (log.transactionHash ?? "0x") as Hex;
+    const kind = EVENT_KIND_BY_NAME[log.eventName ?? ""] ?? null;
+
     if (log.eventName === "MilestoneCreated") {
       const raw = log.args ?? {};
       const idBig = toBigInt((raw as { id?: unknown }).id);
@@ -131,6 +168,17 @@ export async function GET(request: NextRequest) {
       const railValue = toBigInt((raw as { rail?: unknown }).rail);
       const id = Number(idBig);
 
+      const event: MilestoneEvent = {
+        id: makeEventId(id, "CREATED", txHash),
+        milestoneId: id,
+        type: "CREATED",
+        blockNumber: blockNumber.toString(),
+        transactionHash: txHash,
+        actor: clientAddress,
+        amount: amount.toString(),
+        rail: resolveRail(railValue),
+      };
+
       merged.set(id, {
         base: {
           id,
@@ -140,38 +188,58 @@ export async function GET(request: NextRequest) {
           rail: resolveRail(railValue),
           reference: referenceToString(ref),
           referenceHex: ref,
-          createdBlock: log.blockNumber.toString(),
+          createdBlock: blockNumber.toString(),
         },
         events: {
           funded: false,
           released: false,
           canceled: false,
           extra: undefined,
-          lastEventBlock: log.blockNumber,
+          lastEventBlock: blockNumber,
+          history: [event],
         },
       });
-    } else if (log.eventName === "Funded") {
-      const id = Number(toBigInt((log.args as { id?: unknown })?.id));
-      const entry = merged.get(id);
-      if (entry) {
-        entry.events.funded = true;
-        entry.events.lastEventBlock = log.blockNumber;
-      }
-    } else if (log.eventName === "Released") {
-      const id = Number(toBigInt((log.args as { id?: unknown })?.id));
-      const entry = merged.get(id);
-      if (entry) {
-        entry.events.released = true;
-        entry.events.lastEventBlock = log.blockNumber;
-      }
-    } else if (log.eventName === "Canceled") {
-      const id = Number(toBigInt((log.args as { id?: unknown })?.id));
-      const entry = merged.get(id);
-      if (entry) {
-        entry.events.canceled = true;
-        entry.events.lastEventBlock = log.blockNumber;
-      }
+      allEvents.push(event);
+      continue;
     }
+
+    const id = Number(toBigInt((log.args as { id?: unknown })?.id));
+    const entry = merged.get(id);
+    if (!entry || !kind) {
+      continue;
+    }
+
+    if (kind === "FUNDED") {
+      entry.events.funded = true;
+    } else if (kind === "RELEASED") {
+      entry.events.released = true;
+    } else if (kind === "CANCELED") {
+      entry.events.canceled = true;
+    }
+
+    entry.events.lastEventBlock = blockNumber;
+
+    const event: MilestoneEvent = {
+      id: makeEventId(id, kind, txHash),
+      milestoneId: id,
+      type: kind,
+      blockNumber: blockNumber.toString(),
+      transactionHash: txHash,
+    };
+
+    if (kind === "FUNDED") {
+      const args = log.args as { from?: unknown; amount?: unknown };
+      event.actor = toAddress(args.from);
+      event.amount = toBigInt(args.amount).toString();
+    } else if (kind === "RELEASED") {
+      const args = log.args as { to?: unknown; amount?: unknown; rail?: unknown };
+      event.actor = toAddress(args.to);
+      event.amount = toBigInt(args.amount).toString();
+      event.rail = resolveRail(toBigInt(args.rail));
+    }
+
+    entry.events.history.push(event);
+    allEvents.push(event);
   }
 
   const extrasByRef = new Map<string, string>();
@@ -182,9 +250,15 @@ export async function GET(request: NextRequest) {
     extrasByRef.set(ref, extra);
   });
 
-  const result: Milestone[] = Array.from(merged.values())
+  const milestones = Array.from(merged.values())
     .map((entry) => {
       const extra = extrasByRef.get(entry.base.referenceHex.toLowerCase());
+      const sortedHistory = [...entry.events.history].sort((a, b) => {
+        const diff = BigInt(b.blockNumber) - BigInt(a.blockNumber);
+        if (diff > 0n) return 1;
+        if (diff < 0n) return -1;
+        return a.transactionHash.localeCompare(b.transactionHash);
+      });
       return {
         ...entry.base,
         funded: entry.events.funded,
@@ -192,6 +266,7 @@ export async function GET(request: NextRequest) {
         canceled: entry.events.canceled,
         extra,
         lastEventBlock: entry.events.lastEventBlock.toString(),
+        events: sortedHistory,
       };
     })
     .filter((milestone) => {
@@ -203,7 +278,21 @@ export async function GET(request: NextRequest) {
     })
     .sort((a, b) => Number(b.id) - Number(a.id));
 
-  return NextResponse.json(result, {
+  const visibleIds = new Set(milestones.map((milestone) => milestone.id));
+
+  const response: MilestonesResponse = {
+    milestones,
+    events: allEvents
+      .filter((event) => visibleIds.has(event.milestoneId))
+      .sort((a, b) => {
+        const diff = BigInt(b.blockNumber) - BigInt(a.blockNumber);
+        if (diff > 0n) return 1;
+        if (diff < 0n) return -1;
+        return a.transactionHash.localeCompare(b.transactionHash);
+      }),
+  };
+
+  return NextResponse.json(response, {
     headers: {
       "Cache-Control": "public, max-age=30, stale-while-revalidate=30",
     },
