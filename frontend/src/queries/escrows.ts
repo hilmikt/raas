@@ -181,14 +181,12 @@ export function useOpenEscrows(address: Address | null | undefined, chainId: num
       if (!address) {
         return [];
       }
-      const account = address;
       try {
         const response = await readContract(wagmiConfig, {
           address: addressBook.ESCROW,
           abi: EscrowAbi,
           functionName: "getOpenEscrows",
-          account,
-          args: [account],
+          args: [address],
         });
 
         const list = Array.isArray(response) ? response : [];

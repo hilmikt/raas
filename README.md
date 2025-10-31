@@ -39,27 +39,27 @@ Used for transparent contract and event verification, ensuring auditability of e
 
 ## 🚀 Quick Start (Local Setup)
 
-~# 1. Clone the repository~  
+```# 1. Clone the repository```
 git clone https://github.com/hilmikt/raas.git  
 cd raas  
 
-~# 2. Install dependencies~  
+```# 2. Install dependencies```
 pnpm install  
 
-~# 3. Compile and test contracts~  
+```# 3. Compile and test contracts```
 cd contracts  
 npx hardhat compile  
 npx hardhat test  
 
-~# 4. Deploy contracts (Sepolia recommended)~  
+```# 4. Deploy contracts (Sepolia recommended)```
 npx hardhat run scripts/deploy.js --network sepolia  
 
-~# 5. Update frontend env~  
+```# 5. Update frontend env```
 cd ../frontend  
 cp .env.example .env.local  
 (Add your deployed contract addresses, RPC URL, and private key)  
 
-~# 6. Run frontend locally~  
+```# 6. Run frontend locally```
 pnpm dev  
 
 ---
@@ -100,7 +100,7 @@ Reputation is computed by weighting:
 - On-chain payment proofs  
 
 Each freelancer’s address can be queried on-chain:  
-~getReputation(address user) returns (uint256 score)~  
+```getReputation(address user) returns (uint256 score)```
 
 ---
 
